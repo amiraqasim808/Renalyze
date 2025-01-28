@@ -17,7 +17,7 @@ export const sendEmail = async ({ subject, to, html, attachments = [] }) => {
   //receiver
   if (html) {
     const info = await transporter.sendMail({
-      from: `"AmiraCommerce" <${process.env.EMAIL}>`,
+      from: `"Renalyze" <${process.env.EMAIL}>`,
       to,
       subject,
       html,
@@ -27,7 +27,7 @@ export const sendEmail = async ({ subject, to, html, attachments = [] }) => {
     return true;
   } else {
     const info = await transporter.sendMail({
-      from: `"AmiraCommerce" <${process.env.EMAIL}>`,
+      from: `"Renalyze" <${process.env.EMAIL}>`,
       to,
       subject,
       attachments,

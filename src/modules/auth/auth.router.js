@@ -27,53 +27,60 @@ router.patch(
   validation(authSchema.forgetCodeSchema),
   authController.sendForgetCode
 );
+// Verify code
+router.post(
+  "/verify_code",
+  validation(authSchema.verifyCodeSchema), // Add schema for verifying the code
+  authController.verifyCode
+);
 
-//reset password
+// Reset password
 router.patch(
   "/reset_password",
   validation(authSchema.resetPasswordSchema),
   authController.resetPassword
 );
+
 // Update password
 router.patch(
   "/update_password",
   validation(authSchema.updatePasswordSchema),
   authController.updatePassword
 );
-// Logout
-router.post("/logout", isAthenticated, authController.logout);
-// Soft delete user
-router.patch(
-  "/soft_delete/:userId",
-  isAthenticated,
-  isAuthorized("user", "admin"),
-  validation(authSchema.softDeleteUser),
-  authController.softDeleteUser
-);
+// // Logout
+// router.post("/logout", isAthenticated, authController.logout);
+// // Soft delete user
+// router.patch(
+//   "/soft_delete/:userId",
+//   isAthenticated,
+//   isAuthorized("user", "admin"),
+//   validation(authSchema.softDeleteUser),
+//   authController.softDeleteUser
+// );
 
-// Get active users
-router.get(
-  "/active_users",
-  isAthenticated,
-  isAuthorized("admin"),
-  authController.getActiveUsers
-);
+// // Get active users
+// router.get(
+//   "/active_users",
+//   isAthenticated,
+//   isAuthorized("admin"),
+//   authController.getActiveUsers
+// );
 
-// Get deleted users
-router.get(
-  "/deleted_users",
-  isAthenticated,
-  isAuthorized("admin"),
-  authController.getDeletedUsers
-);
+// // Get deleted users
+// router.get(
+//   "/deleted_users",
+//   isAthenticated,
+//   isAuthorized("admin"),
+//   authController.getDeletedUsers
+// );
 
-// Restore deleted user
-router.patch(
-  "/restore_user/:userId",
-  isAthenticated,
-  isAuthorized("user", "admin"),
-  validation(authSchema.softDeleteUser),
-  authController.restoreUser
-);
+// // Restore deleted user
+// router.patch(
+//   "/restore_user/:userId",
+//   isAthenticated,
+//   isAuthorized("user", "admin"),
+//   validation(authSchema.softDeleteUser),
+//   authController.restoreUser
+// );
 
 export default router;

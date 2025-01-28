@@ -50,16 +50,16 @@ app.use("/user", userRouter);
 app.all("*", (req, res, next) => {
   return next(new Error("page not found", { cause: 404 }));
 });
-//global error handler
-app.use((error, req, res, next) => {
-  const statusCode = error.status || 500;
+// Global Error Handler
+app.use((error, req, res, next) => { 
+  
+  const statusCode = error.cause || 500;
   return res.status(statusCode).json({
     success: false,
-    message: error.message,
-    stack: error.stack,
+    message: error.message || "Internal Server Error",
+    stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
   });
 });
-
 app.listen(process.env.PORT || port, () => {
   console.log("app is running");
 });

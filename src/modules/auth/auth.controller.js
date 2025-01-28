@@ -6,180 +6,246 @@ import { signUpTemp } from "../../utils/htmlTemplates.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Token } from "../../../DB/models/token.model.js";
 import randomstring from "randomstring";
-import { Cart } from "../../../DB/models/cart.model.js";
 
-//register
+
+// Register
 export const register = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
   const user = await User.findOne({ email, isDeleted: false });
-  if (user) return next(new Error("email already exists"), { cause: 409 });
+  if (user) {
+    const error = new Error("Email already exists");
+    error.cause = 409;
+    return next(error);
+  }
 
   const token = jwt.sign(email, process.env.TOKEN_SECRET);
   await User.create({ ...req.body });
-  const confirmatinLink = `http://localhost:3000/auth/activate_account/${token}`;
+
+  // Use the request's host for the confirmation link
+  const host = req.get("host");
+  const protocol = req.protocol;
+  const confirmationLink = `${protocol}://${host}/auth/activate_account/${token}`;
+
   const sentMessage = await sendEmail({
     to: email,
-    subject: "activate account",
-    html: signUpTemp(confirmatinLink),
+    subject: "Activate account",
+    html: signUpTemp(confirmationLink),
   });
-  if (!sentMessage) return next(new Error("something went wrong "));
-  return res.status(201).json({ success: true, message: "check your email!" });
+  if (!sentMessage) {
+    const error = new Error("Something went wrong");
+    error.cause = 500;
+    return next(error);
+  }
+
+  return res.status(201).json({ success: true, message: "Check your email!" });
 });
 
-//activate account
+
+// Activate account
 export const activateAccount = asyncHandler(async (req, res, next) => {
   const { token } = req.params;
   const email = jwt.verify(token, process.env.TOKEN_SECRET);
   const user = await User.findOneAndUpdate({ email }, { isConfirmed: true });
-  if (!user) return next(new Error("user not found "), { cause: 404 });
-  //create cart
-  await Cart.create({ user: user._id });
-  return res.json({ success: true, message: "you can login now" });
+  if (!user) {
+    const error = new Error("User not found");
+    error.cause = 404;
+    return next(error);
+  }
+
+  return res.status(200).json({ success: true, message: "You can login now" });
 });
-//login
+
+// Login
 export const login = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email, isDeleted: false });
-  if (!user) return next(new Error("user not found"), { cause: 404 });
-  if (!user.isConfirmed)
-    return next(new Error("you must activate your account first "));
+  if (!user) {
+    const error = new Error("User not found");
+    error.cause = 404;
+    return next(error);
+  }
+  if (!user.isConfirmed) {
+    const error = new Error("Activate your account first");
+    error.cause = 403;
+    return next(error);
+  }
+
   const match = bcryptjs.compareSync(password, user.password);
-  if (!match) return next(new Error("incorrect password"));
+  if (!match) {
+    const error = new Error("Incorrect password");
+    error.cause = 401;
+    return next(error);
+  }
+
   const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
   await Token.create({ token, user: user._id });
-  return res.status(201).json({ success: true, resaults: { token } });
+  return res.status(200).json({ success: true, results: { token } });
 });
-//////////////////////forget code//////////////////////
 
+
+// Send forget code
 export const sendForgetCode = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
-  if (!user) return next(new Error("user not found"));
-  if (!user.isConfirmed)
-    return next(new Error("you must activate your account first!"));
-  const code = randomstring.generate({
-    length: 5,
-    charset: "numeric",
-  });
+  if (!user) {
+    const error = new Error("User not found");
+    error.cause = 404;
+    return next(error);
+  }
+  if (!user.isConfirmed) {
+    const error = new Error("Activate your account first!");
+    error.cause = 403;
+    return next(error);
+  }
+
+  const code = randomstring.generate({ length: 4, charset: "numeric" });
   user.forgetCode = code;
   await user.save();
+
   const messageSent = sendEmail({
     to: user.email,
-    subject: "forget password code",
+    subject: "Forget password code",
     html: `<div>${code}</div>`,
   });
-  if (!messageSent) return next(new Error("email invalid!"));
-  return res.send("you can reset password now check email");
-});
-//////////////////////reset password//////////////////////
+  if (!messageSent) {
+    const error = new Error("Email invalid!");
+    error.cause = 500;
+    return next(error);
+  }
 
+  return res.status(200).json({
+    success: true,
+    message: "You can reset password now. Check email!",
+  });
+});
+
+// Verify code
+export const verifyCode = asyncHandler(async (req, res, next) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    const error = new Error("Email doesn't exist");
+    error.cause = 404;
+    return next(error);
+  }
+
+  if (user.forgetCode != req.body.forgetCode) {
+    const error = new Error("Invalid code!");
+    error.cause = 400;
+    return next(error);
+  }
+
+  return res.status(200).json({ success: true, message: "Code verified successfully" });
+});
+
+// Reset password
 export const resetPassword = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
-  if (!user) return next(new Error("email doesn't exist", { cause: 404 }));
-  if (user.forgetCode != req.body.forgetCode) {
-    return next(new Error("invalid code!"));
+  if (!user) {
+    const error = new Error("Email doesn't exist");
+    error.cause = 404;
+    return next(error);
   }
 
   user.password = req.body.password;
   await user.save();
-  // invalidate all tokens
+
   const tokens = await Token.find({ user: user._id });
   tokens.forEach(async (token) => {
     token.isValid = false;
     await token.save();
   });
+
   await User.findOneAndUpdate(
     { email: req.body.email },
     { $unset: { forgetCode: 1 } }
   );
-  return res.json({ success: true, message: "you can login now" });
+
+  return res.status(200).json({
+    success: true,
+    message: "Password reset successfully. You can now login.",
+  });
 });
+
 
 // Logout
 export const logout = asyncHandler(async (req, res, next) => {
   const token = req.token;
-
   const isToken = await Token.findOneAndUpdate({ token }, { isValid: false });
-  if (!isToken) return next(new Error("invalid token!"));
-  // Send a response indicating successful logout
-  res.json({ success: true, message: "Logout successful" });
+  if (!isToken) return next(new Error("Invalid token!"), { cause: 401 });
+
+  return res.status(200).json({ success: true, message: "Logout successful" });
 });
 
 // Update password
 export const updatePassword = asyncHandler(async (req, res, next) => {
   const { email, oldPassword, newPassword } = req.body;
 
-  // Check if the user exists and password matches
   const user = await User.findOne({ email, isDeleted: false });
-  if (!user) {
-    return next(new Error("User not found"), { cause: 404 });
-  }
-  const match = bcryptjs.compareSync(oldPassword, user.password);
-  if (!match) {
-    return next(new Error("Incorrect old password"));
-  }
+  if (!user) return next(new Error("User not found"), { cause: 404 });
 
-  // Update the password
+  const match = bcryptjs.compareSync(oldPassword, user.password);
+  if (!match) return next(new Error("Incorrect old password"), { cause: 401 });
+
   user.password = newPassword;
   await user.save();
-  // invalidate all tokens
+
   const tokens = await Token.find({ user: user._id });
   tokens.forEach(async (token) => {
     token.isValid = false;
     await token.save();
   });
-  res.json({ success: true, message: "Password updated successfully" });
+
+  return res
+    .status(200)
+    .json({ success: true, message: "Password updated successfully" });
 });
 
 // Soft delete user
 export const softDeleteUser = asyncHandler(async (req, res, next) => {
   const { userId } = req.params;
 
-  // Fetch the user by ID
   const user = await User.findById(userId);
-  if (!user) {
-    return next(new Error("User not found"), { cause: 404 });
-  }
+  if (!user) return next(new Error("User not found"), { cause: 404 });
 
-  // Check if the logged-in user is an admin or the user themselves
   const currentUser = req.user;
   if (currentUser.role !== "admin" && currentUser._id.toString() !== userId) {
     return next(new Error("You are not allowed to do this!"), { cause: 403 });
   }
 
-  // Soft delete the user
   const updatedUser = await User.findOneAndUpdate(
     { _id: userId, isDeleted: false },
     { isDeleted: true }
   );
 
-  // Invalidate all tokens associated with the deleted user
   const tokens = await Token.find({ user: userId });
   tokens.forEach(async (token) => {
     token.isValid = false;
     await token.save();
   });
 
-  res.json({ success: true, message: "User has been soft deleted" });
+  return res
+    .status(200)
+    .json({ success: true, message: "User has been soft deleted" });
 });
 
 // Get active users
 export const getActiveUsers = asyncHandler(async (req, res, next) => {
   const activeUsers = await User.find({ isDeleted: false });
-  res.json({ success: true, users: activeUsers });
+  return res.status(200).json({ success: true, users: activeUsers });
 });
 
 // Get deleted users
 export const getDeletedUsers = asyncHandler(async (req, res, next) => {
   const deletedUsers = await User.find({ isDeleted: true });
-  res.json({ success: true, users: deletedUsers });
+  return res.status(200).json({ success: true, users: deletedUsers });
 });
 
 // Restore deleted user
 export const restoreUser = asyncHandler(async (req, res, next) => {
   const { userId } = req.params;
   const user = await User.findByIdAndUpdate(userId, { isDeleted: false });
-  if (!user) {
-    return next(new Error("User not found"), { cause: 404 });
-  }
-  res.json({ success: true, message: "User has been restored" });
+  if (!user) return next(new Error("User not found"), { cause: 404 });
+
+  return res
+    .status(200)
+    .json({ success: true, message: "User has been restored" });
 });
