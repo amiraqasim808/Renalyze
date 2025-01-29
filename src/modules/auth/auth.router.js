@@ -47,9 +47,9 @@ router.patch(
   validation(authSchema.updatePasswordSchema),
   authController.updatePassword
 );
-// // Logout
-// router.post("/logout", isAthenticated, authController.logout);
-// // Soft delete user
+// Logout
+router.post("/logout", isAthenticated, authController.logout);
+// Soft delete user
 // router.patch(
 //   "/soft_delete/:userId",
 //   isAthenticated,

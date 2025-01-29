@@ -57,7 +57,7 @@ app.use((error, req, res, next) => {
   return res.status(statusCode).json({
     success: false,
     message: error.message || "Internal Server Error",
-    stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    stack: error.stack ,
   });
 });
 app.listen(process.env.PORT || port, () => {

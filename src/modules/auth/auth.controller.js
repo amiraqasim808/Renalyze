@@ -7,7 +7,6 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Token } from "../../../DB/models/token.model.js";
 import randomstring from "randomstring";
 
-
 // Register
 export const register = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
@@ -39,7 +38,6 @@ export const register = asyncHandler(async (req, res, next) => {
 
   return res.status(201).json({ success: true, message: "Check your email!" });
 });
-
 
 // Activate account
 export const activateAccount = asyncHandler(async (req, res, next) => {
@@ -81,7 +79,6 @@ export const login = asyncHandler(async (req, res, next) => {
   await Token.create({ token, user: user._id });
   return res.status(200).json({ success: true, results: { token } });
 });
-
 
 // Send forget code
 export const sendForgetCode = asyncHandler(async (req, res, next) => {
@@ -133,7 +130,9 @@ export const verifyCode = asyncHandler(async (req, res, next) => {
     return next(error);
   }
 
-  return res.status(200).json({ success: true, message: "Code verified successfully" });
+  return res
+    .status(200)
+    .json({ success: true, message: "Code verified successfully" });
 });
 
 // Reset password
@@ -165,12 +164,16 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 // Logout
 export const logout = asyncHandler(async (req, res, next) => {
   const token = req.token;
+  
   const isToken = await Token.findOneAndUpdate({ token }, { isValid: false });
-  if (!isToken) return next(new Error("Invalid token!"), { cause: 401 });
+  if (!isToken) {
+    const error = new Error("Invalid token!");
+    error.cause = 401;
+    return next(error);
+  }
 
   return res.status(200).json({ success: true, message: "Logout successful" });
 });
@@ -180,11 +183,18 @@ export const updatePassword = asyncHandler(async (req, res, next) => {
   const { email, oldPassword, newPassword } = req.body;
 
   const user = await User.findOne({ email, isDeleted: false });
-  if (!user) return next(new Error("User not found"), { cause: 404 });
+  if (!user) {
+    const error = new Error("User not found");
+    error.cause = 404;
+    return next(error);
+  }
 
   const match = bcryptjs.compareSync(oldPassword, user.password);
-  if (!match) return next(new Error("Incorrect old password"), { cause: 401 });
-
+  if (!match) {
+    const error = new Error("Incorrect old password");
+    error.cause = 401;
+    return next(error);
+  }
   user.password = newPassword;
   await user.save();
 
