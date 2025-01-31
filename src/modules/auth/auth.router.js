@@ -2,7 +2,7 @@ import { Router } from "express";
 import { validation } from "../../middleware/validation.middleware.js";
 import * as authController from "./auth.controller.js";
 import * as authSchema from "./auth.schema.js";
-import { isAthenticated } from "../../middleware/authentication.middleware.js";
+import { isAuthenticated } from "../../middleware/authentication.middleware.js";
 import { isAuthorized } from "../../middleware/autherization.middileware.js";
 
 const router = Router();
@@ -48,11 +48,11 @@ router.patch(
   authController.updatePassword
 );
 // Logout
-router.post("/logout", isAthenticated, authController.logout);
+router.post("/logout", isAuthenticated, authController.logout);
 // Soft delete user
 // router.patch(
 //   "/soft_delete/:userId",
-//   isAthenticated,
+//   isAuthenticated,
 //   isAuthorized("user", "admin"),
 //   validation(authSchema.softDeleteUser),
 //   authController.softDeleteUser
@@ -61,7 +61,7 @@ router.post("/logout", isAthenticated, authController.logout);
 // // Get active users
 // router.get(
 //   "/active_users",
-//   isAthenticated,
+//   isAuthenticated,
 //   isAuthorized("admin"),
 //   authController.getActiveUsers
 // );
@@ -69,7 +69,7 @@ router.post("/logout", isAthenticated, authController.logout);
 // // Get deleted users
 // router.get(
 //   "/deleted_users",
-//   isAthenticated,
+//   isAuthenticated,
 //   isAuthorized("admin"),
 //   authController.getDeletedUsers
 // );
@@ -77,7 +77,7 @@ router.post("/logout", isAthenticated, authController.logout);
 // // Restore deleted user
 // router.patch(
 //   "/restore_user/:userId",
-//   isAthenticated,
+//   isAuthenticated,
 //   isAuthorized("user", "admin"),
 //   validation(authSchema.softDeleteUser),
 //   authController.restoreUser

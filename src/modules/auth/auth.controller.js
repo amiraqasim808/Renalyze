@@ -67,6 +67,11 @@ export const login = asyncHandler(async (req, res, next) => {
     error.cause = 403;
     return next(error);
   }
+if (user.isBlocked) {
+  const error = new Error("Your account has been blocked!");
+  error.cause = 403;
+  return next(error);
+}
 
   const match = bcryptjs.compareSync(password, user.password);
   if (!match) {
@@ -167,7 +172,7 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
 // Logout
 export const logout = asyncHandler(async (req, res, next) => {
   const token = req.token;
-  
+
   const isToken = await Token.findOneAndUpdate({ token }, { isValid: false });
   if (!isToken) {
     const error = new Error("Invalid token!");
@@ -208,7 +213,44 @@ export const updatePassword = asyncHandler(async (req, res, next) => {
     .status(200)
     .json({ success: true, message: "Password updated successfully" });
 });
+export const googleSignIn = asyncHandler(async (req, res, next) => {
+  const { accessToken } = req.body;
 
+  // Validate Google access token
+  let userInfo;
+  try {
+    const { data } = await axios.get(
+      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`
+    );
+    userInfo = data;
+  } catch (error) {
+    return next(new Error("Invalid Google access token"));
+  }
+
+  const { sub: googleUserId, email, name, picture } = userInfo;
+  if (!email) {
+    return next(new Error("Google account must have an email"));
+  }
+
+  let user = await User.findOne({ email, isDeleted: false });
+
+  if (!user) {
+    user = await User.create({
+      googleUserId,
+      email,
+      userName: name,
+      profileImage: { url: picture },
+      role: role || "user",
+      isConfirmed: true, // Google users are considered verified
+    });
+  }
+
+  // Generate authentication token
+  const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
+  await Token.create({ token, user: user._id });
+
+  return res.status(200).json({ success: true, results: { token, user } });
+});
 // Soft delete user
 export const softDeleteUser = asyncHandler(async (req, res, next) => {
   const { userId } = req.params;

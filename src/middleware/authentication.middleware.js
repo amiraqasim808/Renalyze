@@ -3,7 +3,7 @@ import { User } from "../../DB/models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 
-export const isAthenticated = asyncHandler(async (req, res, next) => {
+export const isAuthenticated = asyncHandler(async (req, res, next) => {
   let token = req.headers["token"];
   if (!token || !token.startsWith(process.env.BEARER_KEY)) {
     const error = new Error("valid token is required !");

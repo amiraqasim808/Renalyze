@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 import { connectDb } from "./DB/connection.js";
 import authRouter from "./src/modules/auth/auth.router.js";
 import userRouter from "./src/modules/user/user.router.js";
+import adminRouter from "./src/modules/dashboard/dashboard.router.js";
+import doctorRouter from "./src/modules/doctor/doctor.router.js";
+import articleRouter from "./src/modules/article/article.router.js";
 import cors from "cors";
 
 dotenv.config();
@@ -46,6 +49,9 @@ app.use((req, res, next) => {
 //routers
 app.use("/auth", authRouter);
 app.use("/user", userRouter);
+app.use("/admin", adminRouter);
+app.use("/doctor", doctorRouter);
+app.use("/article", articleRouter);
 //page not found
 app.all("*", (req, res, next) => {
   return next(new Error("page not found", { cause: 404 }));

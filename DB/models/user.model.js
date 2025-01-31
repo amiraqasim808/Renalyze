@@ -22,16 +22,13 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    gender: {
-      type: String,
-      enum: ["male", "female"],
-    },
-    phone: {
-      type: String,
+    isBlocked: {
+      type: Boolean,
+      default: false,
     },
     role: {
       type: String,
-      enum: ["user", "seller", "admin"],
+      enum: ["user", "admin"],
       default: "user",
     },
     forgetCode: String,
@@ -46,7 +43,6 @@ const userSchema = new Schema(
         default: "E_Commerce/users/defaults/profilePic/avatar_baqtea",
       },
     },
-    coverImages: [{ url: { type: String }, id: { type: String } }],
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
