@@ -11,33 +11,21 @@ import cors from "cors";
 dotenv.config();
 const app = express();
 const port = 3000;
-//connect db
+
+// Connect DB
 await connectDb();
-//cors
+
+// CORS Configuration (Allow Access from Anywhere)
 const corsConfig = {
-  origin: "",
+  origin: "*",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["*"], // Allow all headers
 };
 app.use(cors(corsConfig));
-app.options("", cors(corsConfig));
-// const whiteList = ["http://127.0.0.1:5500"];
-// app.use((req, res, next) => {
-//   if(req.originalUrl.includes("/auth/activate_account")){
-//     res.setHeader("Access-Control-Allow-Origin", "*");
-//     res.setHeader("Access-Control-Allow-Methods", "GET");
-//     return next();
-//   }
-//   if (!whiteList.includes(req.header("origin"))) {
-//     return next(new Error("blocked by CORS!"));
-//   }
-//   res.setHeader("Access-Control-Allow-Origin","*");
-//   res.setHeader("Access-Control-Allow-Headers","*");
-//   res.setHeader("Access-Control-Allow-Methods","*");
-//   res.setHeader("Access-Control-Allow-Private-Network",true);
-//   return next()
-// });
-//parsing
+app.options("*", cors(corsConfig)); // Handle preflight requests
+
+// Parsing
 app.use((req, res, next) => {
   if (req.originalUrl === "/order/webhook") {
     return next();
@@ -45,27 +33,29 @@ app.use((req, res, next) => {
   express.json()(req, res, next);
 });
 
-
-//routers
+// Routers
 app.use("/auth", authRouter);
 app.use("/user", userRouter);
 app.use("/admin", adminRouter);
 app.use("/doctor", doctorRouter);
 app.use("/article", articleRouter);
-//page not found
+
+// Page Not Found
 app.all("*", (req, res, next) => {
   return next(new Error("page not found", { cause: 404 }));
 });
+
 // Global Error Handler
-app.use((error, req, res, next) => { 
-  
+app.use((error, req, res, next) => {
   const statusCode = error.cause || 500;
   return res.status(statusCode).json({
     success: false,
     message: error.message || "Internal Server Error",
-    stack: error.stack ,
+    stack: error.stack,
   });
 });
+
+// Start Server
 app.listen(process.env.PORT || port, () => {
   console.log("app is running");
 });
