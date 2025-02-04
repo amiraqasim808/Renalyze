@@ -11,7 +11,7 @@ const router = Router();
 // ✅ Create an Article
 router.post(
   "/add",
-  isAuthenticated,
+  isAuthenticated,isAuthorized("admin"),
   fileUpload(filterObject.image).single("img"),
   validation(articleSchema.addArticleSchema),
   articleController.addArticle
@@ -35,13 +35,6 @@ router.patch(
 // ✅ Delete Article
 router.delete("/delete/:id", isAuthenticated, articleController.deleteArticle);
 
-// ✅ Publish or Archive Article (Admin only)
-router.patch(
-  "/status/:id",
-  isAuthenticated,
-  isAuthorized("admin"),
-  validation(articleSchema.updateArticleStatusSchema),
-  articleController.updateArticleStatus
-);
+
 
 export default router;

@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import bcryptjs from "bcryptjs";
+
 const userSchema = new Schema(
   {
     userName: {
@@ -16,7 +17,14 @@ const userSchema = new Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleUserId; // Password is required only if Google ID is missing
+      },
+    },
+    googleUserId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple users with null Google IDs
     },
     isConfirmed: {
       type: Boolean,
@@ -47,12 +55,15 @@ const userSchema = new Schema(
   },
   { timestamps: true }
 );
+
+// 🔹 Hash password only if it exists and is modified
 userSchema.pre("save", function () {
-  if (this.isModified("password")) {
+  if (this.password && this.isModified("password")) {
     this.password = bcryptjs.hashSync(
       this.password,
       parseInt(process.env.SALT_ROUND)
     );
   }
 });
+
 export const User = model("User", userSchema);

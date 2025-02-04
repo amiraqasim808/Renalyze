@@ -3,7 +3,9 @@ import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Token } from "../../../DB/models/token.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-
+import { Article } from "../../../DB/models/article.model.js";
+import { Post } from "../../../DB/models/post.model.js";
+import { Doctor } from "../../../DB/models/doctor.model.js";
 export const loginAdmin = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
   const admin = await User.findOne({
@@ -55,5 +57,121 @@ export const blockUser = asyncHandler(async (req, res, next) => {
     message: `User has been ${
       user.isBlocked ? "blocked" : "unblocked"
     } successfully`,
+  });
+});
+
+
+export const getDashboardStats = asyncHandler(async (req, res, next) => {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  // Helper function to get today's and yesterday's count
+  const getCounts = async (model) => {
+    const todayCount = await model.countDocuments({
+      createdAt: { $gte: today.setHours(0, 0, 0, 0) },
+    });
+
+    const yesterdayCount = await model.countDocuments({
+      createdAt: {
+        $gte: yesterday.setHours(0, 0, 0, 0),
+        $lt: today.setHours(0, 0, 0, 0),
+      },
+    });
+
+    const percentageChange =
+      yesterdayCount === 0
+        ? todayCount // Avoid division by zero
+        : ((todayCount - yesterdayCount) / yesterdayCount) * 100;
+
+    return { total: await model.countDocuments(), change: percentageChange };
+  };
+
+  // Fetch counts for each model
+  const users = await getCounts(User);
+  const articles = await getCounts(Article);
+  const posts = await getCounts(Post);
+  const doctors = await getCounts(Doctor);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      users,
+      articles,
+      posts,
+      doctors,
+    },
+  });
+});
+
+
+export const getUserGrowth = asyncHandler(async (req, res, next) => {
+  const { month, year } = req.query;
+
+  // Validate month and year
+  if (!month || !year) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide both month and year (e.g., ?month=1&year=2024)",
+    });
+  }
+
+  const selectedMonth = parseInt(month);
+  const selectedYear = parseInt(year);
+
+  if (
+    isNaN(selectedMonth) ||
+    isNaN(selectedYear) ||
+    selectedMonth < 1 ||
+    selectedMonth > 12
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid month or year" });
+  }
+
+  // Get first and last day of the selected month
+  const startDate = new Date(selectedYear, selectedMonth - 1, 1); // 1st day of month
+  const endDate = new Date(selectedYear, selectedMonth, 0); // Last day of month
+
+  // Aggregate users by date
+  const userGrowth = await User.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { _id: 1 }, // Sort by date (ascending)
+    },
+  ]);
+
+  // Convert to object for easy lookup
+  const userGrowthMap = userGrowth.reduce((acc, item) => {
+    acc[item._id] = item.count;
+    return acc;
+  }, {});
+
+  // Generate full list of days with zeroes for missing days
+  const dailyData = [];
+  for (let day = 1; day <= endDate.getDate(); day++) {
+    const dateKey = `${selectedYear}-${String(selectedMonth).padStart(
+      2,
+      "0"
+    )}-${String(day).padStart(2, "0")}`;
+    dailyData.push({ date: dateKey, count: userGrowthMap[dateKey] || 0 });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: dailyData,
   });
 });

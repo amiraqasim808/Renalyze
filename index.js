@@ -6,6 +6,7 @@ import userRouter from "./src/modules/user/user.router.js";
 import adminRouter from "./src/modules/dashboard/dashboard.router.js";
 import doctorRouter from "./src/modules/doctor/doctor.router.js";
 import articleRouter from "./src/modules/article/article.router.js";
+import postRouter from "./src/modules/post/post.router.js";
 import cors from "cors";
 
 dotenv.config();
@@ -39,6 +40,7 @@ app.use("/user", userRouter);
 app.use("/admin", adminRouter);
 app.use("/doctor", doctorRouter);
 app.use("/article", articleRouter);
+app.use("/post", postRouter);
 
 // Page Not Found
 app.all("*", (req, res, next) => {

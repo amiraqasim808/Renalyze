@@ -4,10 +4,33 @@ import { isAuthorized } from "../../middleware/autherization.middileware.js";
 import { isAuthenticated } from "../../middleware/authentication.middleware.js";
 import * as userController from "../user/user.controller.js";
 import * as userSchema from "../user/user.controller.js";
+import { fileUpload, filterObject } from "../../utils/multer.js";
 
 const router = Router();
 
 // get user data
 router.get("/", isAuthenticated, isAuthorized("user"), userController.userData);
-
+// update user's profile
+router.post(
+  "/updateProfile",
+  isAuthenticated,
+  isAuthorized("user"),
+  fileUpload(filterObject.image).single("img"),
+  userController.updateUserProfile
+);
+// get diagnosis
+router.post(
+  "/diagnose",
+  isAuthenticated,
+  isAuthorized("user"),
+  fileUpload(filterObject.image).single("scanFile"),
+  userController.getKidneyScanDiagnosis
+);
+// Get Past Kidney Scan Diagnoses
+router.get(
+  "/pastResults",
+  isAuthenticated,
+  isAuthorized("user"),
+  userController.getPastKidneyScanDiagnoses
+);
 export default router;

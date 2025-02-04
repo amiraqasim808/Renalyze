@@ -228,29 +228,41 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
   }
 
   const { sub: googleUserId, email, name, picture } = userInfo;
+
   if (!email) {
     return next(new Error("Google account must have an email"));
   }
 
   let user = await User.findOne({ email, isDeleted: false });
 
-  if (!user) {
+  if (user) {
+    // 🔹 Blocked users can't log in
+    if (user.isBlocked) {
+      return next(new Error("Your account is blocked"));
+    }
+
+    // 🔹 If user exists but has no `googleUserId`, update it (link Google login)
+    if (!user.googleUserId) {
+      user.googleUserId = googleUserId;
+      await user.save();
+    }
+  } else {
+    // 🔹 New Google user signup
     user = await User.create({
       googleUserId,
       email,
       userName: name,
       profileImage: { url: picture },
-      role: role || "user",
-      isConfirmed: true, // Google users are considered verified
+      isConfirmed: true, // Google users are automatically verified
     });
   }
 
-  // Generate authentication token
+  // 🔹 Generate new authentication token
   const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
-  await Token.create({ token, user: user._id });
 
   return res.status(200).json({ success: true, results: { token, user } });
 });
+
 // Soft delete user
 export const softDeleteUser = asyncHandler(async (req, res, next) => {
   const { userId } = req.params;

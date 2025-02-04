@@ -12,6 +12,19 @@ const router = Router();
 router.post("/login" ,validation(login), adminController.loginAdmin);
 //block unblock user
 router.post("/blockUser/:id", isAuthenticated,isAuthorized("admin"), adminController.blockUser);
-
+// get stats
+router.get(
+  "/dashboard-stats",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.getDashboardStats
+);
+// get user growth
+router.get(
+  "/UserGrowth",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.getUserGrowth
+);
 
 export default router;

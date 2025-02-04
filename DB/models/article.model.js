@@ -25,11 +25,6 @@ const articleSchema = new Schema(
         default: "defaults/default-article",
       },
     },
-    status: {
-      type: String,
-      enum: ["pending", "published", "archived"],
-      default: "pending",
-    },
     author: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

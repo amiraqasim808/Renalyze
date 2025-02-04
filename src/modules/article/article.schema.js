@@ -14,6 +14,4 @@ export const updateArticleSchema = Joi.object({
   image: Joi.object().optional(),
 });
 
-export const updateArticleStatusSchema = Joi.object({
-  action: Joi.string().valid("publish", "archive").required(),
-});
+
