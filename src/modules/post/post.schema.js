@@ -28,3 +28,6 @@ export const createReplySchema = Joi.object({
 export const updateReplySchema = Joi.object({
   content: Joi.string().min(1).max(500),
 });
+export const toggleLikeSchema = Joi.object({
+  targetType: Joi.string().valid("Post", "Comment", "Reply"),
+});

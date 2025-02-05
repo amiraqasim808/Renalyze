@@ -40,34 +40,109 @@ export const addPost = asyncHandler(async (req, res, next) => {
 
 // **Get all posts**
 export const getPosts = asyncHandler(async (req, res) => {
+  const userId = req.user._id; // Logged-in user
+
   const posts = await Post.find()
     .populate("userId", "userName profileImage") // Get user info
     .populate({
       path: "comments",
-      select: "content userId createdAt",
+      select: "content userId createdAt likesCount repliesCount", // Select required fields
+      populate: [
+        { path: "userId", select: "userName profileImage" }, // Populate user info for comments
+        { path: "likesCount" }, // Populate like count for each comment
+        { path: "repliesCount" }, // Populate replies count for each comment
+        {
+          path: "likes",
+          select: "userId",
+          populate: { path: "userId", select: "userName profileImage" }, // Populate likes for each comment
+        },
+      ],
+    })
+    .populate({
+      path: "likes",
+      select: "userId",
       populate: { path: "userId", select: "userName profileImage" },
     })
-    .populate("likes") // Count of likes
-    .populate("commentCount"); // Count of comments
+    .populate("likesCount") // Fetch like count for the post
+    .populate("commentCount") // Fetch comment count for the post
+    .lean(); // Convert to plain objects to modify data
 
-  res.status(200).json({ success: true, results: posts });
+  // Fetch likes for the logged-in user
+  const userLikes = await Like.find({ userId });
+
+  // Add `isLiked` info for posts and comments
+  const postsWithLikes = posts.map((post) => {
+    const postIsLiked = userLikes.some(
+      (like) => like.targetId.equals(post._id) && like.targetType === "Post"
+    );
+
+    const commentsWithLikes = post.comments.map((comment) => {
+      const commentIsLiked = userLikes.some(
+        (like) =>
+          like.targetId.equals(comment._id) && like.targetType === "Comment"
+      );
+      return { ...comment, isLiked: commentIsLiked };
+    });
+
+    return { ...post, isLiked: postIsLiked, comments: commentsWithLikes };
+  });
+
+  res.status(200).json({ success: true, results: postsWithLikes });
 });
 
 // **Get a specific post by ID**
 export const getPostById = asyncHandler(async (req, res, next) => {
+  const userId = req.user._id; // Logged-in user
+
+  // Find post by ID and populate necessary fields
   const post = await Post.findById(req.params.id)
-    .populate("userId", "userName profileImage")
+    .populate("userId", "userName profileImage") // Get user info
     .populate({
       path: "comments",
-      select: "content userId createdAt",
-      populate: { path: "userId", select: "userName profileImage" },
+      select: "content userId createdAt likesCount repliesCount", // Select required fields
+      populate: [
+        { path: "userId", select: "userName profileImage" }, // Populate user info for comments
+        { path: "likesCount" }, // Populate like count for each comment
+        { path: "repliesCount" }, // Populate replies count for each comment
+        {
+          path: "likes",
+          select: "userId",
+          populate: { path: "userId", select: "userName profileImage" }, // Populate likes for each comment
+        },
+      ],
     })
-    .populate("likes")
-    .populate("commentCount");
+    .populate({
+      path: "likes",
+      select: "userId",
+      populate: { path: "userId", select: "userName profileImage" }, // Populate likes for the post
+    })
+    .populate("likesCount") // Fetch like count for the post
+    .populate("commentCount") // Fetch comment count for the post
+    .lean(); // Convert to plain objects to modify data
 
+  // If post not found
   if (!post) {
-    return next(new Error("Post not found"));
+    const error = new Error("Post not found");
+    error.cause = 404;
+    return next(error);
   }
+
+  // Fetch likes for the logged-in user
+  const userLikes = await Like.find({ userId });
+
+  // Add `isLiked` info for the post
+  post.isLiked = userLikes.some(
+    (like) => like.targetId.equals(post._id) && like.targetType === "Post"
+  );
+
+  // Add `isLiked` info for each comment
+  post.comments = post.comments.map((comment) => {
+    const commentIsLiked = userLikes.some(
+      (like) =>
+        like.targetId.equals(comment._id) && like.targetType === "Comment"
+    );
+    return { ...comment, isLiked: commentIsLiked };
+  });
 
   res.status(200).json({ success: true, post });
 });
@@ -80,7 +155,9 @@ export const updatePost = asyncHandler(async (req, res, next) => {
 
   const post = await Post.findById(id);
   if (!post) {
-    return next(new Error("Post not found"));
+    const error = new Error("Post not found");
+    error.cause = 404;
+    return next(error);
   }
   if (post.userId.toString() !== req.user._id.toString()) {
     const error = new Error("You are not allowed to update this post!");
@@ -129,14 +206,20 @@ export const deletePost = asyncHandler(async (req, res, next) => {
 
   const post = await Post.findById(id);
   if (!post) {
-    return next(new Error("Post not found"));
+    const error = new Error("Post not found");
+    error.cause = 404;
+    return next(error);
   }
-
+  if (post.userId.toString() !== req.user._id.toString()) {
+    const error = new Error("You are not allowed to delete this post!");
+    error.cause = 403;
+    return next(error);
+  }
   // Find comments related to the post
   const comments = await Comment.find({ postId: id });
 
   // Extract comment IDs to delete related replies
-  const commentIds = comments.map(comment => comment._id);
+  const commentIds = comments.map((comment) => comment._id);
 
   // Delete replies associated with comments of the post
   await Reply.deleteMany({ commentId: { $in: commentIds } });
@@ -153,25 +236,44 @@ export const deletePost = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, message: "Post deleted" });
 });
 
-
 // **Get all replies for a specific comment**
 export const getRepliesByCommentId = asyncHandler(async (req, res, next) => {
   const { commentId } = req.params;
+  const userId = req.user._id;
 
-  // Fetch all replies for the given comment ID
+  // Fetch replies for the specific comment and populate necessary fields
   const replies = await Reply.find({ commentId })
-    .populate("userId", "userName profileImage")
+    .populate("userId", "userName profileImage") // Populate user info for replies
+    .populate("likesCount") // Populate like count for replies
     .populate({
-      path: "commentId",
-      select: "content userId createdAt",
+      path: "likes",
+      select: "userId",
       populate: { path: "userId", select: "userName profileImage" },
-    });
+    })
+    .lean(); // Convert to plain objects to modify data
 
-  if (!replies) {
-    return next(new Error("No replies found for this comment"));
+  if (!replies || replies.length === 0) {
+    const error = new Error("No replies found for this comment");
+    error.cause = 404;
+    return next(error);
   }
 
-  res.status(200).json({ success: true, replies });
+  // Fetch likes for the logged-in user
+  const userLikes = await Like.find({ userId });
+
+  // Add `isLiked` info for each reply
+  const repliesWithLikes = replies.map((reply) => {
+    const replyIsLiked = userLikes.some(
+      (like) => like.targetId.equals(reply._id) && like.targetType === "Reply"
+    );
+
+    return {
+      ...reply,
+      isLiked: replyIsLiked,
+    };
+  });
+
+  res.status(200).json({ success: true, replies: repliesWithLikes });
 });
 
 export const createComment = asyncHandler(async (req, res, next) => {
@@ -217,6 +319,17 @@ export const updateComment = asyncHandler(async (req, res, next) => {
   const userId = req.user._id;
   const mediaFiles = req.files; // Handle multiple media files
 
+  const comment = await Comment.findById(commentId);
+  if (!comment) {
+    const error = new Error("Comment not found");
+    error.cause = 404;
+    return next(error);
+  }
+  if (comment.userId.toString() !== req.user._id.toString()) {
+    const error = new Error("You are not allowed to update this comment!");
+    error.cause = 403;
+    return next(error);
+  }
   let media = [];
   if (mediaFiles && mediaFiles.length > 0) {
     try {
@@ -233,22 +346,20 @@ export const updateComment = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Update the comment with new content and media
-  const updatedComment = await Comment.findOneAndUpdate({
-    _id:commentId,
-    userId},
-    { content, media },
-    { new: true }
-  );
-
-  if (!updatedComment) {
-    return next(new Error("Comment not found"));
+  if (content && content.trim() !== "") {
+    comment.content = content;
+  }
+  if (media && media.length > 0) {
+    comment.media = media;
   }
 
+  await comment.save();
+  
+  
   res.status(200).json({
     success: true,
     message: "Comment updated successfully",
-    updatedComment,
+    comment,
   });
 });
 
@@ -256,15 +367,33 @@ export const updateComment = asyncHandler(async (req, res, next) => {
 export const deleteComment = asyncHandler(async (req, res, next) => {
   const { commentId } = req.params;
   const userId = req.user._id;
-  const deletedComment = await Comment.findOneAndDelete({ _id:commentId, userId });
-
-  if (!deletedComment) {
-    return next(new Error("Comment not found"));
+  const comment = await Comment.findById(commentId);
+  if (!comment) {
+    const error = new Error("Comment not found");
+    error.cause = 404;
+    return next(error);
   }
+  if (comment.userId.toString() !== req.user._id.toString()) {
+    const error = new Error("You are not allowed to delete this comment!");
+    error.cause = 403;
+    return next(error);
+  }
+  // Find and delete the comment along with its associated likes and replies
+  const deletedComment = await Comment.findOneAndDelete({
+    _id: commentId,
+    userId,
+  });
+
+  // Delete associated likes for the comment
+  await Like.deleteMany({ targetId: commentId, targetType: "Comment" });
+
+  // Delete associated replies for the comment
+  await Reply.deleteMany({ commentId });
 
   res.status(200).json({
     success: true,
-    message: "Comment deleted successfully",
+    message:
+      "Comment deleted successfully",
   });
 });
 
@@ -272,7 +401,7 @@ export const deleteComment = asyncHandler(async (req, res, next) => {
 export const createReply = asyncHandler(async (req, res, next) => {
   const { commentId } = req.params;
   const { content } = req.body;
-  const userId  = req.user._id; // Assuming userId is part of the JWT payload
+  const userId = req.user._id; // Assuming userId is part of the JWT payload
   const mediaFiles = req.files; // Handle multiple media files
 
   let media = [];
@@ -312,7 +441,17 @@ export const updateReply = asyncHandler(async (req, res, next) => {
   const { content } = req.body;
   const userId = req.user._id;
   const mediaFiles = req.files; // Handle multiple media files
-
+  const reply = await Reply.findById(replyId);
+  if (!reply) {
+    const error = new Error("reply not found");
+    error.cause = 404;
+    return next(error);
+  }
+  if (reply.userId.toString() !== req.user._id.toString()) {
+    const error = new Error("You are not allowed to update this reply!");
+    error.cause = 403;
+    return next(error);
+  }
   let media = [];
   if (mediaFiles && mediaFiles.length > 0) {
     try {
@@ -331,15 +470,10 @@ export const updateReply = asyncHandler(async (req, res, next) => {
 
   // Update the reply with new content and media
   const updatedReply = await Reply.findOneAndUpdate(
-   { _id:replyId,
-    userId},
+    { _id: replyId, userId },
     { content, media },
     { new: true }
   );
-
-  if (!updatedReply) {
-    return next(new Error("Reply not found"));
-  }
 
   res.status(200).json({
     success: true,
@@ -352,14 +486,53 @@ export const updateReply = asyncHandler(async (req, res, next) => {
 export const deleteReply = asyncHandler(async (req, res, next) => {
   const { replyId } = req.params;
   const userId = req.user._id;
-  const deletedReply = await Reply.findOneAndDelete({_id:replyId,userId});
 
-  if (!deletedReply) {
-    return next(new Error("Reply not found"));
+  const reply = await Reply.findById(replyId);
+  if (!reply) {
+    const error = new Error("reply not found");
+    error.cause = 404;
+    return next(error);
   }
+  if (reply.userId.toString() !== req.user._id.toString()) {
+    const error = new Error("You are not allowed to update this reply!");
+    error.cause = 403;
+    return next(error);
+  }
+  // Find and delete the reply
+  await Reply.findOneAndDelete({ _id: replyId, userId });
+
+  // Delete associated likes for the reply
+  await Like.deleteMany({ targetId: replyId, targetType: "Reply" });
 
   res.status(200).json({
     success: true,
-    message: "Reply deleted successfully",
+    message: "Reply and its associated likes deleted successfully",
   });
+});
+
+// **Toggle Like**
+export const toggleLike = asyncHandler(async (req, res, next) => {
+  const { targetId } = req.params; // Can be a post, comment, or reply ID
+  const { targetType } = req.body; // Type of entity being liked
+  const userId = req.user._id;
+
+  // Check if the like already exists
+  const existingLike = await Like.findOne({ targetId, targetType, userId });
+
+  if (existingLike) {
+    // Unlike (remove the like)
+    await Like.findByIdAndDelete(existingLike._id);
+    return res.status(200).json({
+      success: true,
+      message: "Like removed",
+    });
+  } else {
+    // Like (add a new like)
+    const newLike = await Like.create({ targetId, targetType, userId });
+    return res.status(201).json({
+      success: true,
+      message: "Like added",
+      like: newLike,
+    });
+  }
 });

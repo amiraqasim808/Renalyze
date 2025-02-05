@@ -29,5 +29,17 @@ const replySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
+// Virtual for replies count
+replySchema.virtual("likesCount", {
+  ref: "Like", // The model to reference
+  localField: "_id", // Comment's ID
+  foreignField: "targetId", // Replies reference this field
+  count: true, // Return an array of replies
+});
+// Virtual for replies count
+replySchema.virtual("likes", {
+  ref: "Like", // The model to reference
+  localField: "_id", // Comment's ID
+  foreignField: "targetId", // Replies reference this field
+});
 export const Reply = mongoose.model("Reply", replySchema);

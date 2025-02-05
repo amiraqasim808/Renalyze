@@ -41,5 +41,25 @@ commentSchema.virtual("replies", {
   foreignField: "commentId", // Replies reference this field
   justOne: false, // Return an array of replies
 });
+// Virtual for replies count
+commentSchema.virtual("repliesCount", {
+  ref: "Reply", // The model to reference
+  localField: "_id", // Comment's ID
+  foreignField: "commentId", // Replies reference this field
+  count: true, // Return an array of replies
+});
+// Virtual for replies count
+commentSchema.virtual("likesCount", {
+  ref: "Like", // The model to reference
+  localField: "_id", // Comment's ID
+  foreignField: "targetId", // Replies reference this field
+  count: true, // Return an array of replies
+});
+// Virtual for replies count
+commentSchema.virtual("likes", {
+  ref: "Like", // The model to reference
+  localField: "_id", // Comment's ID
+  foreignField: "targetId", // Replies reference this field
+});
 
 export const Comment = mongoose.model("Comment", commentSchema);

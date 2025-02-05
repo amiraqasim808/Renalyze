@@ -17,10 +17,10 @@ router.post(
 );
 
 // ✅ Get All Posts
-router.get("/all", postController.getPosts);
+router.get("/all", isAuthenticated, postController.getPosts);
 
 // ✅ Get Post by ID
-router.get("/:id", postController.getPostById);
+router.get("/:id", isAuthenticated, postController.getPostById);
 
 // ✅ Update Post
 router.patch(
@@ -62,6 +62,7 @@ router.delete(
 // ✅ Get all replies for a specific comment
 router.get(
   "/comment/:commentId/replies",
+  isAuthenticated,
   postController.getRepliesByCommentId
 );
 
@@ -86,4 +87,6 @@ router.patch(
 // ✅ Delete a Reply
 router.delete("/reply/:replyId", isAuthenticated, postController.deleteReply);
 
+// ✅ Toggle like
+router.post("/toggleLike/:targetId", isAuthenticated,validation(postSchema.toggleLikeSchema), postController.toggleLike);
 export default router;

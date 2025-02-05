@@ -34,11 +34,17 @@ const postSchema = new mongoose.Schema(
 );
 
 // Virtual for Likes
+postSchema.virtual("likesCount", {
+  ref: "Like",
+  localField: "_id",
+  foreignField: "targetId",
+  count: true, // Return count of likes
+});
+// Virtual for Likes
 postSchema.virtual("likes", {
   ref: "Like",
   localField: "_id",
-  foreignField: "postId",
-  count: true, // Return count of likes
+  foreignField: "targetId",
 });
 
 // Virtual for Comments

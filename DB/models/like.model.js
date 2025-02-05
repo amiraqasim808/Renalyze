@@ -7,16 +7,20 @@ const likeSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    postId: {
+    targetId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Post",
+      required: true,
+    },
+    targetType: {
+      type: String,
+      enum: ["Post", "Comment", "Reply"], // Specify the allowed types
       required: true,
     },
   },
   { timestamps: true }
 );
 
-// Ensure a user can like a post only once
-likeSchema.index({ userId: 1, postId: 1 }, { unique: true });
+// Ensure a user can like a specific target only once
+likeSchema.index({ userId: 1, targetId: 1, targetType: 1 }, { unique: true });
 
 export const Like = mongoose.model("Like", likeSchema);

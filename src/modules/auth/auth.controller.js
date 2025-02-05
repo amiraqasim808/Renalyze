@@ -82,7 +82,7 @@ if (user.isBlocked) {
 
   const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
   await Token.create({ token, user: user._id });
-  return res.status(200).json({ success: true, results: { token } });
+  return res.status(200).json({ success: true,message:"logged in successfully", results: { token } });
 });
 
 // Send forget code
