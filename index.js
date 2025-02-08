@@ -7,6 +7,8 @@ import adminRouter from "./src/modules/dashboard/dashboard.router.js";
 import doctorRouter from "./src/modules/doctor/doctor.router.js";
 import articleRouter from "./src/modules/article/article.router.js";
 import postRouter from "./src/modules/post/post.router.js";
+import reviewRouter from "./src/modules/review/review.router.js";
+import reportRouter from "./src/modules/report/report.router.js";
 import cors from "cors";
 
 dotenv.config();
@@ -20,7 +22,7 @@ await connectDb();
 const corsConfig = {
   origin: "*",
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
   allowedHeaders: ["*"], // Allow all headers
 };
 app.use(cors(corsConfig));
@@ -41,6 +43,8 @@ app.use("/admin", adminRouter);
 app.use("/doctor", doctorRouter);
 app.use("/article", articleRouter);
 app.use("/post", postRouter);
+app.use("/review", reviewRouter);
+app.use("/report", reportRouter);
 
 // Page Not Found
 app.all("*", (req, res, next) => {

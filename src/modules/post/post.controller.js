@@ -4,6 +4,7 @@ import { Like } from "../../../DB/models/like.model.js";
 import cloudinary from "../../utils/cloud.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Reply } from "../../../DB/models//reply.model.js";
+import mongoose from "mongoose";
 
 // **Create a new post**
 export const addPost = asyncHandler(async (req, res, next) => {
@@ -354,8 +355,7 @@ export const updateComment = asyncHandler(async (req, res, next) => {
   }
 
   await comment.save();
-  
-  
+
   res.status(200).json({
     success: true,
     message: "Comment updated successfully",
@@ -392,8 +392,7 @@ export const deleteComment = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message:
-      "Comment deleted successfully",
+    message: "Comment deleted successfully",
   });
 });
 
@@ -439,7 +438,6 @@ export const createReply = asyncHandler(async (req, res, next) => {
 export const updateReply = asyncHandler(async (req, res, next) => {
   const { replyId } = req.params;
   const { content } = req.body;
-  const userId = req.user._id;
   const mediaFiles = req.files; // Handle multiple media files
   const reply = await Reply.findById(replyId);
   if (!reply) {
@@ -468,17 +466,19 @@ export const updateReply = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Update the reply with new content and media
-  const updatedReply = await Reply.findOneAndUpdate(
-    { _id: replyId, userId },
-    { content, media },
-    { new: true }
-  );
+  if (content && content.trim() !== "") {
+    reply.content = content;
+  }
+  if (media && media.length > 0) {
+    reply.media = media;
+  }
+
+  await reply.save();
 
   res.status(200).json({
     success: true,
     message: "Reply updated successfully",
-    updatedReply,
+    reply,
   });
 });
 
@@ -506,7 +506,7 @@ export const deleteReply = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: "Reply and its associated likes deleted successfully",
+    message: "Reply deleted successfully",
   });
 });
 
@@ -515,6 +515,37 @@ export const toggleLike = asyncHandler(async (req, res, next) => {
   const { targetId } = req.params; // Can be a post, comment, or reply ID
   const { targetType } = req.body; // Type of entity being liked
   const userId = req.user._id;
+
+  // Validate targetType
+  const validTypes = {
+    Post,
+    Comment,
+    Reply,
+  };
+
+  if (!validTypes[targetType]) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid target type",
+    });
+  }
+
+  // Ensure targetId is a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(targetId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid target ID format",
+    });
+  }
+
+  // Check if the target entity exists
+  const targetExists = await validTypes[targetType].findById(targetId);
+  if (!targetExists) {
+    return res.status(404).json({
+      success: false,
+      message: `${targetType} not found`,
+    });
+  }
 
   // Check if the like already exists
   const existingLike = await Like.findOne({ targetId, targetType, userId });
