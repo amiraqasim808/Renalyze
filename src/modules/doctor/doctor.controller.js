@@ -37,8 +37,6 @@ export const addDoctor = asyncHandler(async (req, res, next) => {
     return next(error);
   }
 
-  // Set the doctor's status based on the user role
-  const status = user.role === "admin" ? "approved" : "pending";
 
   // Create a new doctor
   const doctor = await Doctor.create({
@@ -50,7 +48,6 @@ export const addDoctor = asyncHandler(async (req, res, next) => {
     phoneNumber: phone,
     address,
     aboutDoctor,
-    status,
     mapLocation: JSON.parse(mapLocation),
     addedBy: req.user._id,
   });
@@ -64,14 +61,10 @@ export const addDoctor = asyncHandler(async (req, res, next) => {
 });
 
 export const getDoctors = asyncHandler(async (req, res) => {
-  const { status, address } = req.query; // Get optional filters
+  const {  address } = req.query; // Get optional filters
 
   let filter = {}; // Initialize an empty filter object
 
-  // Filter by status if provided
-  if (status) {
-    filter.status = status;
-  }
 
   // Filter by address if provided (case-insensitive search)
   if (address) {
@@ -167,41 +160,10 @@ export const deleteDoctor = asyncHandler(async (req, res, next) => {
     return next(error);
   }
 
-  // Allow action if the user is an admin or the one who added the doctor
-  if (
-    req.user.role !== "admin" &&
-    doctor.addedBy.toString() !== req.user._id.toString()
-  ) {
-    const error = new Error(
-      "Unauthorized: You can only delete your own doctor profile."
-    );
-    error.cause = 403;
-    return next(error);
-  }
 
   await Doctor.findByIdAndDelete(id);
 
   res.status(200).json({ success: true, message: "Doctor deleted" });
 });
 
-// ✅ Approve or Reject Doctor (Admin only)
-export const updateDoctorStatus = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-  const { action } = req.body; // "approve" or "reject"
 
-  const status = action === "approve" ? "approved" : "rejected";
-
-  const doctor = await Doctor.findByIdAndUpdate(id, { status }, { new: true });
-
-  if (!doctor) {
-    const error = new Error("Doctor not found");
-    error.cause = 404;
-    return next(error);
-  }
-
-  return res.status(200).json({
-    success: true,
-    message: `Doctor ${status}`,
-    doctor,
-  });
-});

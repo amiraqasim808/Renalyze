@@ -17,8 +17,12 @@ router.post(
 // ✅ Get All Reviews
 router.get("/all", reviewController.getReviews);
 
+// ✅ Get user reviews
+router.get("/userReviews", isAuthenticated,reviewController.getUserReviews); 
+
 // ✅ Get Review by ID
 router.get("/:id", reviewController.getReviewById);
+
 
 // ✅ Update Review
 router.patch(

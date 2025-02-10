@@ -65,5 +65,10 @@ userSchema.pre("save", function () {
     );
   }
 });
+userSchema.virtual("posts", {
+  ref: "Post",
+  localField: "_id",
+  foreignField: "userId",
+});
 
 export const User = model("User", userSchema);

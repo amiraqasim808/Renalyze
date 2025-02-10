@@ -38,11 +38,6 @@ const doctorSchema = new Schema(
       lat: { type: String },
     },
     avgRating: { type: Number, min: 0, max: 5, default: 0 },
-    status: {
-      type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
-    },
     addedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

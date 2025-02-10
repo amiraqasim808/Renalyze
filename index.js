@@ -9,6 +9,7 @@ import articleRouter from "./src/modules/article/article.router.js";
 import postRouter from "./src/modules/post/post.router.js";
 import reviewRouter from "./src/modules/review/review.router.js";
 import reportRouter from "./src/modules/report/report.router.js";
+import notificationRouter from "./src/modules/notification/notification.router.js";
 import cors from "cors";
 
 dotenv.config();
@@ -45,6 +46,7 @@ app.use("/article", articleRouter);
 app.use("/post", postRouter);
 app.use("/review", reviewRouter);
 app.use("/report", reportRouter);
+app.use("/notification", notificationRouter);
 
 // Page Not Found
 app.all("*", (req, res, next) => {

@@ -11,7 +11,8 @@ const router = Router();
 // ✅ Create an Article
 router.post(
   "/add",
-  isAuthenticated,isAuthorized("admin"),
+  isAuthenticated,
+  isAuthorized("admin"),
   fileUpload(filterObject.image).single("img"),
   validation(articleSchema.addArticleSchema),
   articleController.addArticle
@@ -27,14 +28,18 @@ router.get("/:id", articleController.getArticleById);
 router.patch(
   "/update/:id",
   isAuthenticated,
+  isAuthorized("admin"),
   fileUpload(filterObject.image).single("img"), // To handle image upload for update
   validation(articleSchema.updateArticleSchema),
   articleController.updateArticle
 );
 
 // ✅ Delete Article
-router.delete("/delete/:id", isAuthenticated, articleController.deleteArticle);
-
-
+router.delete(
+  "/delete/:id",
+  isAuthenticated,
+  isAuthorized("admin"),
+  articleController.deleteArticle
+);
 
 export default router;

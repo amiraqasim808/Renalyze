@@ -130,3 +130,13 @@ export const deleteReview = asyncHandler(async (req, res, next) => {
 await updateDoctorAvgRating(review.doctor);
   res.status(200).json({ success: true, message: "Review deleted" });
 });
+ 
+// Get User's Own Reviews
+export const getUserReviews = asyncHandler(async (req, res) => {
+  const reviews = await Review.find({ user: req.user._id }).populate(
+    "doctor",
+    "name profileImage"
+  );
+
+  res.status(200).json({ success: true, results: reviews });
+});

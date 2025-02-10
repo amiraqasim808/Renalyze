@@ -5,6 +5,8 @@ import cloudinary from "../../utils/cloud.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Reply } from "../../../DB/models//reply.model.js";
 import mongoose from "mongoose";
+import { Notification } from "../../../DB/models/notification.model.js";
+import { User } from "../../../DB/models/user.model.js";
 
 // **Create a new post**
 export const addPost = asyncHandler(async (req, res, next) => {
@@ -211,11 +213,16 @@ export const deletePost = asyncHandler(async (req, res, next) => {
     error.cause = 404;
     return next(error);
   }
-  if (post.userId.toString() !== req.user._id.toString()) {
+  
+  if (
+    post.userId.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
     const error = new Error("You are not allowed to delete this post!");
     error.cause = 403;
     return next(error);
   }
+
   // Find comments related to the post
   const comments = await Comment.find({ postId: id });
 
@@ -230,6 +237,9 @@ export const deletePost = asyncHandler(async (req, res, next) => {
 
   // Delete likes associated with the post
   await Like.deleteMany({ postId: id });
+
+  // **Delete notifications related to this post**
+  await Notification.deleteMany({ postId: id });
 
   // Delete the post itself
   await Post.findByIdAndDelete(id);
@@ -305,6 +315,22 @@ export const createComment = asyncHandler(async (req, res, next) => {
     content,
     media,
   });
+  // Find the post owner
+  const post = await Post.findById(postId);
+  if (post && post.userId.toString() !== userId.toString()) {
+    const user = await User.findById(userId);
+    await Notification.create({
+      userId: post.userId, // Post owner
+      actorId: userId, // Commenter
+      type: "comment",
+      postId: postId,
+      message: `${user.userName} commented on your post: "${content.substring(
+        0,
+        20
+      )}..."`,
+    });
+  }
+
 
   res.status(201).json({
     success: true,
@@ -367,28 +393,33 @@ export const updateComment = asyncHandler(async (req, res, next) => {
 export const deleteComment = asyncHandler(async (req, res, next) => {
   const { commentId } = req.params;
   const userId = req.user._id;
+  
   const comment = await Comment.findById(commentId);
   if (!comment) {
     const error = new Error("Comment not found");
     error.cause = 404;
     return next(error);
   }
-  if (comment.userId.toString() !== req.user._id.toString()) {
+  if (
+    comment.userId.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
     const error = new Error("You are not allowed to delete this comment!");
     error.cause = 403;
     return next(error);
   }
-  // Find and delete the comment along with its associated likes and replies
-  const deletedComment = await Comment.findOneAndDelete({
-    _id: commentId,
-    userId,
-  });
+
+  // Delete associated replies
+  await Reply.deleteMany({ commentId });
 
   // Delete associated likes for the comment
   await Like.deleteMany({ targetId: commentId, targetType: "Comment" });
 
-  // Delete associated replies for the comment
-  await Reply.deleteMany({ commentId });
+  // **Delete notifications related to this comment**
+  await Notification.deleteMany({ commentId });
+
+  // Delete the comment itself
+  await Comment.findByIdAndDelete(commentId);
 
   res.status(200).json({
     success: true,
@@ -396,12 +427,13 @@ export const deleteComment = asyncHandler(async (req, res, next) => {
   });
 });
 
+
 // **Create a reply to a comment**
 export const createReply = asyncHandler(async (req, res, next) => {
   const { commentId } = req.params;
   const { content } = req.body;
-  const userId = req.user._id; // Assuming userId is part of the JWT payload
-  const mediaFiles = req.files; // Handle multiple media files
+  const userId = req.user._id;
+  const mediaFiles = req.files;
 
   let media = [];
   if (mediaFiles && mediaFiles.length > 0) {
@@ -419,17 +451,42 @@ export const createReply = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Create a new reply to the comment with media
+  // Find the original comment
+  const comment = await Comment.findById(commentId);
+  if (!comment) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Comment not found" });
+  }
+
+  // Create a new reply
   const newReply = await Reply.create({
     commentId,
+    postId: comment.postId, // Ensure postId is included
     userId,
     content,
     media,
   });
 
+  if (comment && comment.userId.toString() !== userId.toString()) {
+    const user = await User.findById(userId);
+    await Notification.create({
+      userId: comment.userId, // Comment owner
+      actorId: userId, // Replier
+      type: "reply",
+      commentId: commentId,
+      postId: comment.postId, // Include postId
+      message: `${user.nameName} replied to your comment: "${content.substring(
+        0,
+        20
+      )}..."`,
+    });
+  }
+
   res.status(201).json({
     success: true,
-    message: "Reply created successfully",
+    message: "Reply added successfully to the comment.",
+    postId: comment.postId,
     reply: newReply,
   });
 });
@@ -489,20 +546,27 @@ export const deleteReply = asyncHandler(async (req, res, next) => {
 
   const reply = await Reply.findById(replyId);
   if (!reply) {
-    const error = new Error("reply not found");
+    const error = new Error("Reply not found");
     error.cause = 404;
     return next(error);
   }
-  if (reply.userId.toString() !== req.user._id.toString()) {
-    const error = new Error("You are not allowed to update this reply!");
+  if (
+    reply.userId.toString() !== req.user._id.toString() &&
+    req.user.role !== "admin"
+  ) {
+    const error = new Error("You are not allowed to delete this reply!");
     error.cause = 403;
     return next(error);
   }
-  // Find and delete the reply
-  await Reply.findOneAndDelete({ _id: replyId, userId });
 
   // Delete associated likes for the reply
   await Like.deleteMany({ targetId: replyId, targetType: "Reply" });
+
+  // **Delete notifications related to this reply**
+  await Notification.deleteMany({ commentId: replyId });
+
+  // Delete the reply itself
+  await Reply.findByIdAndDelete(replyId);
 
   res.status(200).json({
     success: true,
@@ -510,60 +574,92 @@ export const deleteReply = asyncHandler(async (req, res, next) => {
   });
 });
 
+
 // **Toggle Like**
 export const toggleLike = asyncHandler(async (req, res, next) => {
-  const { targetId } = req.params; // Can be a post, comment, or reply ID
-  const { targetType } = req.body; // Type of entity being liked
+  const { targetId } = req.params;
+  const { targetType } = req.body;
   const userId = req.user._id;
 
-  // Validate targetType
-  const validTypes = {
-    Post,
-    Comment,
-    Reply,
-  };
-
+  const validTypes = { Post, Comment, Reply };
   if (!validTypes[targetType]) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid target type",
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid target type" });
   }
 
-  // Ensure targetId is a valid ObjectId
   if (!mongoose.Types.ObjectId.isValid(targetId)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid target ID format",
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid target ID format" });
   }
 
-  // Check if the target entity exists
   const targetExists = await validTypes[targetType].findById(targetId);
   if (!targetExists) {
-    return res.status(404).json({
-      success: false,
-      message: `${targetType} not found`,
-    });
+    return res
+      .status(404)
+      .json({ success: false, message: `${targetType} not found` });
   }
 
-  // Check if the like already exists
   const existingLike = await Like.findOne({ targetId, targetType, userId });
 
+  let postId = null;
+  if (targetType === "Post") {
+    postId = targetId;
+  } else if (targetType === "Comment" || targetType === "Reply") {
+    const parentCommentOrReply = await validTypes[targetType].findById(
+      targetId
+    );
+    postId = parentCommentOrReply?.postId || null;
+  }
+
   if (existingLike) {
-    // Unlike (remove the like)
     await Like.findByIdAndDelete(existingLike._id);
     return res.status(200).json({
       success: true,
-      message: "Like removed",
+      message: `You have unliked this ${targetType.toLowerCase()}.`,
+      postId,
     });
   } else {
-    // Like (add a new like)
     const newLike = await Like.create({ targetId, targetType, userId });
+
+    if (targetExists.userId.toString() !== userId.toString()) {
+      const user = await User.findById(userId);
+      let message = `${user.name} liked your ${targetType.toLowerCase()}`;
+
+      if (targetType === "Post") {
+        message = `${user.nameName} liked your post`;
+      } else if (targetType === "Comment") {
+        message = `${user.nameName} liked your comment`;
+      } else if (targetType === "Reply") {
+        message = `${user.nameName} liked your reply`;
+      }
+
+      await Notification.create({
+        userId: targetExists.userId, // Owner of the post/comment/reply
+        actorId: userId, // Who liked it
+        type: "like",
+        postId: targetType === "Post" ? targetId : null,
+        commentId:
+          targetType === "Comment" || targetType === "Reply" ? targetId : null,
+        message: message,
+      });
+    }
+
+
     return res.status(201).json({
       success: true,
-      message: "Like added",
+      message: `You have liked this ${targetType.toLowerCase()}.`,
+      postId,
       like: newLike,
     });
   }
 });
+
+
+
+
+
+
+
+

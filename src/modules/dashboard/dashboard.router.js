@@ -1,17 +1,21 @@
 import { Router } from "express";
 import { validation } from "../../middleware/validation.middleware.js";
 import * as adminController from "./dashboard.controller.js";
-import {login}  from "../auth/auth.schema.js";
+import { login } from "../auth/auth.schema.js";
 import { isAuthenticated } from "../../middleware/authentication.middleware.js";
 import { isAuthorized } from "../../middleware/autherization.middileware.js";
 
 const router = Router();
 
-
 //login
-router.post("/login" ,validation(login), adminController.loginAdmin);
+router.post("/login", validation(login), adminController.loginAdmin);
 //block unblock user
-router.post("/blockUser/:id", isAuthenticated,isAuthorized("admin"), adminController.blockUser);
+router.post(
+  "/blockUser/:id",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.blockUser
+);
 // get stats
 router.get(
   "/dashboard-stats",
@@ -26,5 +30,18 @@ router.get(
   isAuthorized("admin"),
   adminController.getUserGrowth
 );
-
+//send email to all users
+router.post(
+  "/sendEmails",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.sendEmailToAllUsers
+);
+//send email to all users
+router.post(
+  "/sendEmail/:userId",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.sendEmailToSingleUser
+);
 export default router;

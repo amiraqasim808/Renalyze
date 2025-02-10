@@ -6,6 +6,8 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Article } from "../../../DB/models/article.model.js";
 import { Post } from "../../../DB/models/post.model.js";
 import { Doctor } from "../../../DB/models/doctor.model.js";
+import { sendEmail } from "../../utils/sendEmails.js";
+
 export const loginAdmin = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
   const admin = await User.findOne({
@@ -173,5 +175,75 @@ export const getUserGrowth = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: dailyData,
+  });
+});
+
+export const sendEmailToAllUsers = asyncHandler(async (req, res, next) => {
+  const { subject, message } = req.body;
+
+  if (!subject || !message) {
+    return res.status(400).json({
+      success: false,
+      message: "Subject and message are required",
+    });
+  }
+
+  // Get all active users
+  const users = await User.find({ isDeleted: false }).select("email");
+
+  if (!users.length) {
+    return res.status(404).json({
+      success: false,
+      message: "No users found to send emails to",
+    });
+  }
+
+  // Send email to each user
+  const emailPromises = users.map((user) =>
+    sendEmail({
+      to: user.email,
+      subject,
+      html: `<p>${message}</p>`,
+    })
+  );
+
+  await Promise.all(emailPromises);
+
+  res.status(200).json({
+    success: true,
+    message: "Emails have been sent successfully to all users",
+  });
+});
+
+export const sendEmailToSingleUser = asyncHandler(async (req, res, next) => {
+  const { userId } = req.params;
+  const { subject, message } = req.body;
+
+  if (!subject || !message) {
+    return res.status(400).json({
+      success: false,
+      message: "Subject and message are required",
+    });
+  }
+
+  // Find the user
+  const user = await User.findById(userId);
+  if (!user || user.isDeleted) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  // Send warning email
+  await sendEmail({
+    to: user.email,
+    subject,
+    html: `<p>${message}</p>`,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Email has been sent successfully",
   });
 });

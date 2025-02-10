@@ -13,6 +13,11 @@ router.post(
   validation(authSchema.register),
   authController.register
 );
+// google_signUpLogin
+router.post(
+  "/google",
+  authController.googleSignIn
+);
 //activate account
 router.get(
   "/activate_account/:token",
@@ -50,13 +55,13 @@ router.patch(
 // Logout
 router.post("/logout", isAuthenticated, authController.logout);
 // Soft delete user
-// router.patch(
-//   "/soft_delete/:userId",
-//   isAuthenticated,
-//   isAuthorized("user", "admin"),
-//   validation(authSchema.softDeleteUser),
-//   authController.softDeleteUser
-// );
+router.delete(
+  "/delete",
+  isAuthenticated,
+  isAuthorized("user"),
+  authController.deleteUser
+);
+
 
 // // Get active users
 // router.get(
@@ -74,13 +79,6 @@ router.post("/logout", isAuthenticated, authController.logout);
 //   authController.getDeletedUsers
 // );
 
-// // Restore deleted user
-// router.patch(
-//   "/restore_user/:userId",
-//   isAuthenticated,
-//   isAuthorized("user", "admin"),
-//   validation(authSchema.softDeleteUser),
-//   authController.restoreUser
-// );
+
 
 export default router;

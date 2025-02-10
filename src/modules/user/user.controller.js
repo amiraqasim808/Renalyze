@@ -5,11 +5,14 @@ import cloudinary from "../../utils/cloud.js";
 
 // get user data
 export const userData = asyncHandler(async (req, res, next) => {
-  // Fetch the user from the database using the user ID from the token (req.user._id)
   const user = await User.findById(
-    req.user._id, 
-    "userName email profileImage  -_id" // Select fields to return
-  );
+    req.user._id,
+    "userName email profileImage -_id"
+  ).populate({
+    path: "posts",
+    select: "content media tag likesCount commentCount createdAt", // Select relevant fields
+    populate: [{ path: "likesCount" }, { path: "commentCount" }],
+  });
 
   if (!user) {
     const error = new Error("User not found");
@@ -19,7 +22,7 @@ export const userData = asyncHandler(async (req, res, next) => {
 
   return res.json({
     success: true,
-    results: { user }
+    results: { user },
   });
 });
 

@@ -145,12 +145,5 @@ export const updatePasswordSchema = joi
   })
   .required();
 
-// Soft Delete User
-export const softDeleteUser = joi
-  .object({
-    userId: joi.string().custom(isValidObjectId).required().messages({
-      "string.empty": "User ID is required",
-      "any.custom": "Invalid User ID format",
-    }),
-  })
-  .required();
+
+  

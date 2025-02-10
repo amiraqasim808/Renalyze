@@ -88,5 +88,10 @@ router.patch(
 router.delete("/reply/:replyId", isAuthenticated, postController.deleteReply);
 
 // ✅ Toggle like
-router.post("/toggleLike/:targetId", isAuthenticated,validation(postSchema.toggleLikeSchema), postController.toggleLike);
+router.post(
+  "/toggleLike/:targetId",
+  isAuthenticated,
+  validation(postSchema.toggleLikeSchema),
+  postController.toggleLike
+);
 export default router;

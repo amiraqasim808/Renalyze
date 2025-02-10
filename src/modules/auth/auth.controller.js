@@ -6,6 +6,8 @@ import { signUpTemp } from "../../utils/htmlTemplates.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Token } from "../../../DB/models/token.model.js";
 import randomstring from "randomstring";
+import axios from "axios";
+
 
 // Register
 export const register = asyncHandler(async (req, res, next) => {
@@ -67,11 +69,11 @@ export const login = asyncHandler(async (req, res, next) => {
     error.cause = 403;
     return next(error);
   }
-if (user.isBlocked) {
-  const error = new Error("Your account has been blocked!");
-  error.cause = 403;
-  return next(error);
-}
+  if (user.isBlocked) {
+    const error = new Error("Your account has been blocked!");
+    error.cause = 403;
+    return next(error);
+  }
 
   const match = bcryptjs.compareSync(password, user.password);
   if (!match) {
@@ -82,7 +84,11 @@ if (user.isBlocked) {
 
   const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
   await Token.create({ token, user: user._id });
-  return res.status(200).json({ success: true,message:"logged in successfully", results: { token } });
+  return res.status(200).json({
+    success: true,
+    message: "logged in successfully",
+    results: { token },
+  });
 });
 
 // Send forget code
@@ -213,6 +219,7 @@ export const updatePassword = asyncHandler(async (req, res, next) => {
     .status(200)
     .json({ success: true, message: "Password updated successfully" });
 });
+//google sign in
 export const googleSignIn = asyncHandler(async (req, res, next) => {
   const { accessToken } = req.body;
 
@@ -223,22 +230,29 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
       `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`
     );
     userInfo = data;
+    
   } catch (error) {
-    return next(new Error("Invalid Google access token"));
+    return res
+      .status(401)
+      .json({ success: false, message: "Invalid Google access token" });
   }
 
   const { sub: googleUserId, email, name, picture } = userInfo;
 
   if (!email) {
-    return next(new Error("Google account must have an email"));
+    return res
+      .status(400)
+      .json({ success: false, message: "Google account must have an email" });
   }
 
-  let user = await User.findOne({ email, isDeleted: false });
+  let user = await User.findOne({ email });
 
   if (user) {
     // 🔹 Blocked users can't log in
     if (user.isBlocked) {
-      return next(new Error("Your account is blocked"));
+      return res
+        .status(403)
+        .json({ success: false, message: "Your account is blocked" });
     }
 
     // 🔹 If user exists but has no `googleUserId`, update it (link Google login)
@@ -257,28 +271,26 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // 🔹 Generate new authentication token
-  const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
+  // 🔹 Generate JWT Token
+  const token = jwt.sign(
+    { userId: user._id, email, role: user.role },
+    process.env.TOKEN_SECRET
+  );
 
   return res.status(200).json({ success: true, results: { token, user } });
 });
 
 // Soft delete user
-export const softDeleteUser = asyncHandler(async (req, res, next) => {
-  const { userId } = req.params;
+export const deleteUser = asyncHandler(async (req, res, next) => {
+  const userId = req.user._id;
 
   const user = await User.findById(userId);
   if (!user) return next(new Error("User not found"), { cause: 404 });
 
-  const currentUser = req.user;
-  if (currentUser.role !== "admin" && currentUser._id.toString() !== userId) {
-    return next(new Error("You are not allowed to do this!"), { cause: 403 });
-  }
-
-  const updatedUser = await User.findOneAndUpdate(
-    { _id: userId, isDeleted: false },
-    { isDeleted: true }
-  );
+  const updatedUser = await User.findOneAndDelete({
+    _id: userId,
+    isDeleted: false,
+  });
 
   const tokens = await Token.find({ user: userId });
   tokens.forEach(async (token) => {
@@ -288,7 +300,7 @@ export const softDeleteUser = asyncHandler(async (req, res, next) => {
 
   return res
     .status(200)
-    .json({ success: true, message: "User has been soft deleted" });
+    .json({ success: true, message: "User has been deleted" });
 });
 
 // Get active users

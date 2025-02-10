@@ -12,6 +12,7 @@ const router = Router();
 router.post(
   "/add",
   isAuthenticated,
+  isAuthorized("admin"),
   fileUpload(filterObject.image).single("img"),
   validation(doctorSchema.addDoctorSchema),
   doctorController.addDoctor
@@ -27,21 +28,18 @@ router.get("/:id", doctorController.getDoctorById);
 router.patch(
   "/update/:id",
   isAuthenticated,
+  isAuthorized("admin"),
   fileUpload(filterObject.image).single("img"), // To handle image upload for update
   validation(doctorSchema.updateDoctorSchema),
   doctorController.updateDoctor
 );
 
 // ✅ Delete Doctor
-router.delete("/delete/:id", isAuthenticated, doctorController.deleteDoctor);
-
-// ✅ Approve or Reject Doctor (Admin only)
-router.patch(
-  "/status/:id",
+router.delete(
+  "/delete/:id",
   isAuthenticated,
   isAuthorized("admin"),
-  validation(doctorSchema.updateDoctorStatusSchema),
-  doctorController.updateDoctorStatus
+  doctorController.deleteDoctor
 );
 
 export default router;

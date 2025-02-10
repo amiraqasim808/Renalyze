@@ -51,12 +51,11 @@ export const addArticle = asyncHandler(async (req, res, next) => {
 
 
 export const getArticles = asyncHandler(async (req, res) => {
-  const { status } = req.query;
-  const filter = status ? { status } : {}; 
-  const articles = await Article.find(filter);
+  const articles = await Article.find().sort({ createdAt: -1 });
 
   res.status(200).json({ success: true, results: articles });
 });
+
 
 export const getArticleById = asyncHandler(async (req, res, next) => {
   const article = await Article.findById(req.params.id);
