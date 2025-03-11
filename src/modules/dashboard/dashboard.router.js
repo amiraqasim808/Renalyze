@@ -9,6 +9,13 @@ const router = Router();
 
 //login
 router.post("/login", validation(login), adminController.loginAdmin);
+//get all users
+router.get(
+  "/allUsers",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.getAllUsers
+);
 //block unblock user
 router.post(
   "/blockUser/:id",

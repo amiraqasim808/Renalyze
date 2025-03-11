@@ -32,6 +32,24 @@ export const loginAdmin = asyncHandler(async (req, res, next) => {
   await admin.save();
   res.status(200).json({ message: "Logged in successfully", data: token });
 });
+export const getAllUsers = asyncHandler(async (req, res, next) => {
+  const users = await User.find({ role: "user", isDeleted: false }).select(
+    "-password"
+  );
+
+  if (!users.length) {
+    return res.status(404).json({
+      success: false,
+      message: "No users found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: users,
+  });
+});
+
 //logout & update password from regular users 
 export const blockUser = asyncHandler(async (req, res, next) => {
   const { id } = req.params; // Get user ID from request params

@@ -8,7 +8,6 @@ import { Token } from "../../../DB/models/token.model.js";
 import randomstring from "randomstring";
 import axios from "axios";
 
-
 // Register
 export const register = asyncHandler(async (req, res, next) => {
   const { email } = req.body;
@@ -84,6 +83,8 @@ export const login = asyncHandler(async (req, res, next) => {
 
   const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
   await Token.create({ token, user: user._id });
+  user.lastLogin = new Date();
+  await user.save();
   return res.status(200).json({
     success: true,
     message: "logged in successfully",
@@ -230,7 +231,6 @@ export const googleSignIn = asyncHandler(async (req, res, next) => {
       `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`
     );
     userInfo = data;
-    
   } catch (error) {
     return res
       .status(401)

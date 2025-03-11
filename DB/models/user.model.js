@@ -39,6 +39,7 @@ const userSchema = new Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    lastLogin: { type: Date },
     forgetCode: String,
     profileImage: {
       url: {
