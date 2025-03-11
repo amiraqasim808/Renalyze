@@ -2,6 +2,15 @@ import { Diagnosis } from "../../../DB/models/diagnosis.model.js";
 import { User } from "../../../DB/models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import cloudinary from "../../utils/cloud.js";
+import axios from "axios";
+import FormData from "form-data";
+import fs from "fs";
+import PDFDocument from "pdfkit";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // get user data
 export const userData = asyncHandler(async (req, res, next) => {
@@ -26,10 +35,10 @@ export const userData = asyncHandler(async (req, res, next) => {
   });
 });
 
-// Update user profile 
+// Update user profile
 export const updateUserProfile = asyncHandler(async (req, res, next) => {
   const { userName } = req.body;
-  const image = req.file; 
+  const image = req.file;
   let updatedProfileImage = null;
   // If a new image is uploaded, upload to Cloudinary
   if (image) {
@@ -40,7 +49,7 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
 
       updatedProfileImage = {
         url: uploadedImage.secure_url,
-        id: uploadedImage.public_id
+        id: uploadedImage.public_id,
       };
     } catch (error) {
       const cloudinaryError = new Error("Image upload failed");
@@ -63,28 +72,26 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
     user.profileImage = updatedProfileImage;
   }
 
-  await user.save(); 
+  await user.save();
 
   return res.status(200).json({
     success: true,
     message: "Profile updated successfully",
-    user: { userName: user.userName, profileImage: user.profileImage }
+    user: { userName: user.userName, profileImage: user.profileImage },
   });
 });
 
-//  AI Diagnosis for Kidney Scan and Save Diagnosis
+// AI kidney diagnosis
 export const getKidneyScanDiagnosis = asyncHandler(async (req, res, next) => {
   if (!req.file) {
-    const error = new Error("Upload kidney scan!");
-    error.status = 400; // Bad request status
-    return next(error);
+    return next(new Error("Upload kidney scan!", { status: 400 }));
   }
 
   // Upload the scan file to Cloudinary
   let scanFileData = null;
   try {
     const uploadedImage = await cloudinary.uploader.upload(req.file.path, {
-      folder: "kidney_scans", // Folder name on Cloudinary
+      folder: "kidney_scans",
     });
 
     scanFileData = {
@@ -92,86 +99,222 @@ export const getKidneyScanDiagnosis = asyncHandler(async (req, res, next) => {
       id: uploadedImage.public_id,
     };
   } catch (error) {
-    const cloudinaryError = new Error("Image upload failed");
-    cloudinaryError.status = 500; // Internal server error
-    return next(cloudinaryError);
+    return next(new Error("Image upload failed", { status: 500 }));
   }
 
-  // Randomly selecting diagnosis
-  const diagnoses = ["Normal", "Stone", "Cyst", "Tumor"];
-  const randomDiagnosis =
-    diagnoses[Math.floor(Math.random() * diagnoses.length)];
+  // Send the image to the AI model for diagnosis
+  let aiPrediction;
+  try {
+    const formData = new FormData();
+    const fileBuffer = fs.readFileSync(req.file.path);
 
-  let diagnosisDetails = {
-    Diagnosis: randomDiagnosis,
-    Condition: "",
-    Details: "",
-    Recommendations: "",
+    formData.append("file", fileBuffer, {
+      filename: req.file.originalname,
+    });
+
+    const { data } = await axios.post(
+      "https://3laaSayed-kidneytest2.hf.space/predict",
+      formData,
+      { headers: formData.getHeaders() }
+    );
+
+    aiPrediction = data;
+  } catch (error) {
+    return next(new Error("AI diagnosis failed", { status: 500 }));
+  }
+
+  // Match AI result with detailed diagnosis information
+  const diagnosisMapping = {
+    Normal: {
+      Condition: "No abnormalities detected in the kidney scan.",
+      Details:
+        "The kidney appears structurally healthy, with no indications of stones, cysts, or tumors. No unusual masses or obstructions were found.",
+      Recommendations:
+        "Maintain a balanced diet, stay hydrated, and undergo routine check-ups to ensure continued kidney health.",
+    },
+    Stone: {
+      Condition: "Kidney stone detected in the scan.",
+      Details:
+        "A kidney stone has been identified, which may vary in size and composition. Small stones might pass naturally, but larger stones may require medical intervention.",
+      Recommendations:
+        "Increase water intake to help pass small stones naturally. Limit sodium and oxalate-rich foods such as spinach, chocolate, and nuts. If symptoms worsen, consult a healthcare professional for treatment options such as medication or lithotripsy.",
+    },
+    Cyst: {
+      Condition: "Presence of a kidney cyst detected.",
+      Details:
+        "A fluid-filled sac has been found in the kidney. While most kidney cysts are benign and do not cause symptoms, monitoring may be required for any changes in size or structure.",
+      Recommendations:
+        "Regularly monitor the cyst with ultrasound scans as advised by a healthcare provider. Maintain a healthy diet, stay hydrated, and avoid excessive salt intake. Seek medical advice if pain, swelling, or other symptoms develop.",
+    },
+    Tumor: {
+      Condition: "Possible kidney tumor detected.",
+      Details:
+        "An abnormal mass has been identified in the kidney. Further medical evaluation is required to determine whether the tumor is benign or malignant.",
+      Recommendations:
+        "Immediate medical consultation is recommended. A healthcare provider may suggest further imaging (CT scan, MRI) or a biopsy to assess the tumor’s nature. Treatment options may include surgery, targeted therapy, or other medical interventions.",
+    },
   };
 
-  // Simulate detailed message for each diagnosis
-  if (randomDiagnosis === "Normal") {
-    diagnosisDetails.Condition =
-      "The analysis of the uploaded scan/test results shows no signs of abnormalities in the kidney.";
-    diagnosisDetails.Details =
-      "The kidneys appear healthy with no signs of stones, cysts, or tumors.";
-    diagnosisDetails.Recommendations =
-      "Continue to maintain a healthy lifestyle and get regular check-ups.";
-  } else if (randomDiagnosis === "Stone") {
-    diagnosisDetails.Condition =
-      "The analysis of the uploaded scan/test results confirms the presence of a kidney stone.";
-    diagnosisDetails.Details =
-      "The presence of a kidney stone was detected. Further assessment may be needed.";
-    diagnosisDetails.Recommendations =
-      "Drink plenty of water, limit salt intake, and avoid foods high in oxalates. Consult with a healthcare professional for further management.";
-  } else if (randomDiagnosis === "Cyst") {
-    diagnosisDetails.Condition =
-      "A kidney cyst has been detected. This is a fluid-filled sac that can form in the kidneys.";
-    diagnosisDetails.Details =
-      "A cyst was detected in the kidney. Further monitoring may be recommended.";
-    diagnosisDetails.Recommendations =
-      "Regular monitoring through ultrasound is recommended. Avoid excessive salt and stay hydrated.";
-  } else if (randomDiagnosis === "Tumor") {
-    diagnosisDetails.Condition =
-      "The analysis indicates the presence of a kidney tumor.";
-    diagnosisDetails.Details =
-      "A tumor was detected in the kidney. Further investigation is necessary to determine its nature.";
-    diagnosisDetails.Recommendations =
-      "Seek immediate medical advice for further investigation. A biopsy or imaging tests may be required for accurate diagnosis.";
+  const aiDiagnosis = aiPrediction.prediction;
+  const confidence = aiPrediction.confidence;
+  const diagnosisDetails = {
+    Diagnosis: aiDiagnosis,
+    Confidence: confidence,
+    Condition: diagnosisMapping[aiDiagnosis].Condition,
+    Details: diagnosisMapping[aiDiagnosis].Details,
+    Recommendations: diagnosisMapping[aiDiagnosis].Recommendations,
+  };
+
+  // Generate PDF with Improved Styles
+  const pdfPath = path.join(__dirname, `diagnosis_${req.user._id}.pdf`);
+  const doc = new PDFDocument({ margin: 40, size: "A4" });
+
+  const writeStream = fs.createWriteStream(pdfPath);
+  doc.pipe(writeStream);
+
+  // Title
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(18) // Reduced font size
+    .text("Kidney Scan Diagnosis Report", { align: "center" });
+  doc.moveDown(1);
+
+  // Add Image (if available)
+  if (scanFileData && scanFileData.url) {
+    try {
+      const response = await axios.get(scanFileData.url, {
+        responseType: "arraybuffer",
+      });
+      const imageBuffer = Buffer.from(response.data, "binary");
+
+      const pageWidth = doc.page.width;
+      const imageWidth = 300; // Reduced image size
+      const xPosition = (pageWidth - imageWidth) / 2; // Center horizontally
+
+      doc.image(imageBuffer, {
+        fit: [imageWidth, 225], // Smaller image
+        x: xPosition,
+        align: "center",
+      });
+      doc.moveDown(0.5);
+    } catch (error) {
+      console.error("Failed to load image:", error.message);
+    }
   }
 
-  // Store diagnosis in the database with Cloudinary file data
+  // Diagnosis Section
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14) // Smaller section title
+    .text("Diagnosis Result", { underline: true });
+  doc.moveDown(0.3);
+  doc
+    .font("Helvetica")
+    .fontSize(12) // Smaller body text
+    .text(`Diagnosis: ${diagnosisDetails.Diagnosis}`);
+  doc.text(`Confidence: ${diagnosisDetails.Confidence}%`);
+  doc.moveDown(0.8);
+
+  // Condition Summary
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Condition Summary", { underline: true });
+  doc.moveDown(0.3);
+  doc
+    .font("Helvetica")
+    .fontSize(12)
+    .text(diagnosisDetails.Condition, { align: "justify" });
+  doc.moveDown(0.8);
+
+  // Detailed Analysis
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Detailed Analysis", { underline: true });
+  doc.moveDown(0.3);
+  doc
+    .font("Helvetica")
+    .fontSize(12)
+    .text(diagnosisDetails.Details, { align: "justify" });
+  doc.moveDown(0.8);
+
+  // Recommendations
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .text("Medical Recommendations", { underline: true });
+  doc.moveDown(0.3);
+  doc
+    .font("Helvetica")
+    .fontSize(12)
+    .text(diagnosisDetails.Recommendations, { align: "justify" });
+  doc.moveDown(1.5);
+
+  // Disclaimer
+  doc
+    .font("Helvetica-Oblique")
+    .fontSize(10) // Smaller disclaimer text
+    .fillColor("red")
+    .text(
+      "This AI-generated report is for informational purposes only and does not replace professional medical advice.",
+      { align: "center" }
+    );
+
+  // End PDF
+  doc.end();
+
+  // Upload PDF to Cloudinary
+  let pdfUrl;
+  try {
+    const uploadedPDF = await cloudinary.uploader.upload(pdfPath, {
+      folder: "kidney_diagnosis_pdfs",
+      resource_type: "raw",
+    });
+    pdfUrl = uploadedPDF.secure_url;
+  } catch (error) {
+    return next(new Error("PDF upload failed", { status: 500 }));
+  }
+
+  // Store diagnosis in the database
   const diagnosis = new Diagnosis({
     userId: req.user._id,
     scanFile: scanFileData,
-    diagnosis: randomDiagnosis,
+    diagnosis: aiDiagnosis,
+    confidence: confidence,
     condition: diagnosisDetails.Condition,
     details: diagnosisDetails.Details,
     recommendations: diagnosisDetails.Recommendations,
+    pdfUrl: pdfUrl, // Store PDF URL in DB
   });
 
   await diagnosis.save();
 
-  // Return the diagnosis details
+  // Return the diagnosis details with PDF link
   return res.json({
     success: true,
     results: diagnosisDetails,
+    pdfUrl: pdfUrl, // Provide PDF download link
   });
 });
 
 // Get Past Kidney Scan Diagnoses
-export const getPastKidneyScanDiagnoses = asyncHandler(async (req, res, next) => {
-  // Fetch all past diagnoses for the user
-  const diagnoses = await Diagnosis.find({ userId: req.user._id }).sort({ createdAt: -1 });
+export const getPastKidneyScanDiagnoses = asyncHandler(
+  async (req, res, next) => {
+    // Fetch all past diagnoses for the user
+    const diagnoses = await Diagnosis.find({ userId: req.user._id }).sort({
+      createdAt: -1,
+    });
 
-  if (!diagnoses || diagnoses.length === 0) {
-    const error = new Error("No past diagnoses found");
-    error.cause = 404;
-    return next(error);
+    if (!diagnoses || diagnoses.length === 0) {
+      const error = new Error("No past diagnoses found");
+      error.cause = 404;
+      return next(error);
+    }
+
+    return res.json({
+      success: true,
+      results: diagnoses,
+    });
   }
-
-  return res.json({
-    success: true,
-    results: diagnoses,
-  });
-});
+);
