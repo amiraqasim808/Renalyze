@@ -38,7 +38,10 @@ const doctorSchema = new Schema(
       lat: { type: String },
     },
     avgRating: { type: Number, min: 0, max: 5, default: 0 },
-    addedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    experience: {
+      type: Number,
+      required: true,
+    },
   },
   { timestamps: true }
 );

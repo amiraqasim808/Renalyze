@@ -20,6 +20,8 @@ router.post(
 
 // ✅ Get All Doctors
 router.get("/all", doctorController.getDoctors);
+// ✅ Get Top Rated Doctors
+router.get("/topRated", doctorController.getTopRatedDoctors);
 
 // ✅ Get Doctor by ID
 router.get("/:id", doctorController.getDoctorById);

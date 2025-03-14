@@ -4,7 +4,8 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import cloudinary from "../../utils/cloud.js";
 
 export const addDoctor = asyncHandler(async (req, res, next) => {
-  const { name, phone, address, aboutDoctor, mapLocation } = req.body;
+  const { name, phone, address, aboutDoctor, mapLocation, experience } =
+    req.body;
   const image = req.file; // Get the image from the request
 
   // If image is provided, upload to Cloudinary
@@ -49,7 +50,7 @@ export const addDoctor = asyncHandler(async (req, res, next) => {
     address,
     aboutDoctor,
     mapLocation: JSON.parse(mapLocation),
-    addedBy: req.user._id,
+    experience
   });
 
   // Return success response
@@ -75,6 +76,16 @@ export const getDoctors = asyncHandler(async (req, res) => {
 
   res.status(200).json({ success: true, results: doctors });
 });
+export const getTopRatedDoctors = asyncHandler(async (req, res) => {
+  const { limit = 10 } = req.query; // Allow limit customization, default to 10
+
+  const topDoctors = await Doctor.find()
+    .sort({ avgRating: -1 }) // Sort by highest rating
+    .limit(Number(limit)); // Limit results
+
+  res.status(200).json({ success: true, results: topDoctors });
+});
+
 
 // ✅ Get Single Doctor by ID
 export const getDoctorById = asyncHandler(async (req, res, next) => {

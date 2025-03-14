@@ -293,8 +293,8 @@ export const getKidneyScanDiagnosis = asyncHandler(async (req, res, next) => {
   // Return the diagnosis details with PDF link
   return res.json({
     success: true,
-    results: diagnosisDetails,
-    pdfUrl: pdfUrl, // Provide PDF download link
+    results: diagnosis,
+    // Provide PDF download link
   });
 });
 
