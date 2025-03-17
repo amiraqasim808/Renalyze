@@ -11,6 +11,7 @@ import reviewRouter from "./src/modules/review/review.router.js";
 import reportRouter from "./src/modules/report/report.router.js";
 import notificationRouter from "./src/modules/notification/notification.router.js";
 import cors from "cors";
+import "./src/utils/AI.cron.js"; 
 
 dotenv.config();
 const app = express();
