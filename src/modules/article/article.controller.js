@@ -1,7 +1,7 @@
 import { Article } from "../../../DB/models/article.model.js";
 import { User } from "../../../DB/models/user.model.js";
 import cloudinary from "../../utils/cloud.js";
-import {asyncHandler} from "../../utils/asyncHandler.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const addArticle = asyncHandler(async (req, res, next) => {
   const { title, content } = req.body;
@@ -29,7 +29,6 @@ export const addArticle = asyncHandler(async (req, res, next) => {
     ? uploadedImage.public_id
     : "defaults/default-article";
 
-
   // Create a new article
   const article = await Article.create({
     title,
@@ -49,13 +48,24 @@ export const addArticle = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const getArticles = asyncHandler(async (req, res) => {
-  const articles = await Article.find().sort({ createdAt: -1 });
+  const { search } = req.query;
+
+  // Build query object
+  let query = {};
+  if (search) {
+    query = {
+      $or: [
+        { title: { $regex: search, $options: "i" } }, // Case-insensitive title search
+        { content: { $regex: search, $options: "i" } }, // Case-insensitive content search
+      ],
+    };
+  }
+
+  const articles = await Article.find(query).sort({ createdAt: -1 });
 
   res.status(200).json({ success: true, results: articles });
 });
-
 
 export const getArticleById = asyncHandler(async (req, res, next) => {
   const article = await Article.findById(req.params.id);
@@ -69,7 +79,6 @@ export const getArticleById = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, article });
 });
 
-
 export const updateArticle = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const updates = req.body;
@@ -82,8 +91,6 @@ export const updateArticle = asyncHandler(async (req, res, next) => {
     error.cause = 404;
     return next(error);
   }
-
- 
 
   let updatedImage = null;
   if (image) {
@@ -127,10 +134,7 @@ export const deleteArticle = asyncHandler(async (req, res, next) => {
     return next(error);
   }
 
-  
-
   await Article.findByIdAndDelete(id);
 
   res.status(200).json({ success: true, message: "Article deleted" });
 });
-
