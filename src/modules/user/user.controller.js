@@ -155,8 +155,16 @@ export const getKidneyScanDiagnosis = asyncHandler(async (req, res, next) => {
     },
   };
 
+  if (aiPrediction.error) {
+    return res.status(400).json({
+      success: false,
+      message: aiPrediction.error, // Return the error from the AI response
+    });
+  }
+
   const aiDiagnosis = aiPrediction.prediction;
   const confidence = aiPrediction.confidence;
+
   const diagnosisDetails = {
     Diagnosis: aiDiagnosis,
     Confidence: confidence,
