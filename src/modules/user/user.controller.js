@@ -326,3 +326,23 @@ export const getPastKidneyScanDiagnoses = asyncHandler(
     });
   }
 );
+export const getSpecificKidneyScanDiagnosis = asyncHandler(
+  async (req, res, next) => {
+    const { id } = req.params;
+
+      const diagnosis = await Diagnosis.findOne({
+        _id: id,
+        userId: req.user._id,
+      });
+
+      if (!diagnosis) {
+        return next(new Error("Diagnosis not found", { status: 404 }));
+      }
+      
+      return res.json({
+        success: true,
+        result: diagnosis,
+      });
+  }
+);
+

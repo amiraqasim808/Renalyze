@@ -33,4 +33,12 @@ router.get(
   isAuthorized("user"),
   userController.getPastKidneyScanDiagnoses
 );
+// Get a specific past kidney scan diagnosis by ID
+router.get(
+  "/pastResults/:id",
+  isAuthenticated,
+  isAuthorized("user"),
+  userController.getSpecificKidneyScanDiagnosis
+);
+
 export default router;

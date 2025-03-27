@@ -57,10 +57,9 @@ export const addReview = asyncHandler(async (req, res, next) => {
 export const getReviews = asyncHandler(async (req, res) => {
   const { doctorId } = req.query;
   const filter = doctorId ? { doctor: doctorId } : {};
-  const reviews = await Review.find(filter).populate(
-    "user",
-    "userName profileImage"
-  );
+  const reviews = await Review.find(filter)
+    .populate("user", "userName profileImage")
+    .sort({ createdAt: -1 });
 
   res.status(200).json({ success: true, results: reviews });
 });
