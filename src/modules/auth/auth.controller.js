@@ -110,7 +110,7 @@ export const sendForgetCode = asyncHandler(async (req, res, next) => {
   user.forgetCode = code;
   await user.save();
 
-  const messageSent = sendEmail({
+  const messageSent = await sendEmail({
     to: user.email,
     subject: "Forget password code",
     html: `<div>${code}</div>`,

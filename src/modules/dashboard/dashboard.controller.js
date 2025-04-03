@@ -32,6 +32,41 @@ export const loginAdmin = asyncHandler(async (req, res, next) => {
   await admin.save();
   res.status(200).json({ message: "Logged in successfully", data: token });
 });
+export const logoutAdmin = asyncHandler(async (req, res, next) => {
+  const  token  = req.token; // Extract token from request headers
+  if (!token) {
+    return res.status(400).json({ message: "No token provided" });
+  }
+
+  // Remove token from database
+  await Token.findOneAndDelete({ token });
+
+  res.status(200).json({ message: "Logged out successfully" });
+});
+export const addAdmin = asyncHandler(async (req, res, next) => {
+  const { email, password, userName } = req.body;
+
+  // Check if the admin already exists
+  const existingAdmin = await User.findOne({ email, role: "admin" });
+  if (existingAdmin) {
+    return res.status(400).json({ message: "Admin already exists" });
+  }
+
+  // Hash password before storing
+  const hashedPassword = bcryptjs.hashSync(password, 10);
+
+  const newAdmin = new User({
+    email,
+    password: hashedPassword,
+    userName,
+    role: "admin",
+    isConfirmed:true
+  });
+
+  await newAdmin.save();
+  res.status(201).json({ message: "Admin added successfully", data: newAdmin });
+});
+
 export const getAllUsers = asyncHandler(async (req, res, next) => {
   const users = await User.find({ role: "user", isDeleted: false }).select(
     "-password"

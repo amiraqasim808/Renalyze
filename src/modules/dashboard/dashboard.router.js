@@ -9,6 +9,20 @@ const router = Router();
 
 //login
 router.post("/login", validation(login), adminController.loginAdmin);
+// Logout Admin
+router.post(
+  "/logout",
+  isAuthenticated,
+  isAuthorized("admin"),
+  adminController.logoutAdmin
+);
+router.post(
+  "/addAdmin",
+  isAuthenticated,
+  isAuthorized("admin"), // Ensure only a superadmin can add new admins
+  adminController.addAdmin
+);
+
 //get all users
 router.get(
   "/allUsers",
@@ -16,6 +30,8 @@ router.get(
   isAuthorized("admin"),
   adminController.getAllUsers
 );
+
+
 //block unblock user
 router.post(
   "/blockUser/:id",
@@ -51,4 +67,5 @@ router.post(
   isAuthorized("admin"),
   adminController.sendEmailToSingleUser
 );
+
 export default router;
