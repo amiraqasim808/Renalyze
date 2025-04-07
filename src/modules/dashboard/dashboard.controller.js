@@ -52,12 +52,10 @@ export const addAdmin = asyncHandler(async (req, res, next) => {
     return res.status(400).json({ message: "Admin already exists" });
   }
 
-  // Hash password before storing
-  const hashedPassword = bcryptjs.hashSync(password, 10);
 
   const newAdmin = new User({
     email,
-    password: hashedPassword,
+    password,
     userName,
     role: "admin",
     isConfirmed:true
