@@ -229,6 +229,10 @@ export const getUserGrowth = asyncHandler(async (req, res, next) => {
   });
 });
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export const sendEmailToAllUsers = asyncHandler(async (req, res, next) => {
   const { subject, message } = req.body;
 
@@ -249,22 +253,30 @@ export const sendEmailToAllUsers = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Send email to each user
-  const emailPromises = users.map((user) =>
-    sendEmail({
-      to: user.email,
-      subject,
-      html: `<p>${message}</p>`,
-    })
-  );
+  // Send email to each user with delay to avoid rate limits
+  for (let i = 0; i < users.length; i++) {
+    try {
+      await sendEmail({
+        to: users[i].email,
+        subject,
+        html: `<p>${message}</p>`,
+      });
 
-  await Promise.all(emailPromises);
+      // Delay between sends (adjust as needed: 300ms - 1000ms)
+      await delay(500);
+    } catch (err) {
+      console.error(`Failed to send to ${users[i].email}:`, err.message);
+      // Optionally continue even if one fails
+    }
+  }
 
   res.status(200).json({
     success: true,
-    message: "Emails have been sent successfully to all users",
+    message:
+      "Emails have been sent successfully to all users (with throttling)",
   });
 });
+
 
 export const sendEmailToSingleUser = asyncHandler(async (req, res, next) => {
   const { userId } = req.params;

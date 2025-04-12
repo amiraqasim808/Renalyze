@@ -18,11 +18,17 @@ router.post(
 router.get("/all", reviewController.getReviews);
 
 // ✅ Get user reviews
-router.get("/userReviews", isAuthenticated,reviewController.getUserReviews); 
+router.get("/userReviews", isAuthenticated, reviewController.getUserReviews);
+
+// ✅ Get review for doctor
+router.get(
+  "/reviewForDoctor/:doctorId",
+  isAuthenticated,
+  reviewController.getMyReviewForDoctor
+);
 
 // ✅ Get Review by ID
 router.get("/:id", reviewController.getReviewById);
-
 
 // ✅ Update Review
 router.patch(
@@ -36,4 +42,3 @@ router.patch(
 router.delete("/delete/:id", isAuthenticated, reviewController.deleteReview);
 
 export default router;
-

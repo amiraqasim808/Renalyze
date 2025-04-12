@@ -60,7 +60,14 @@ export const addReport = asyncHandler(async (req, res, next) => {
 export const getReports = asyncHandler(async (req, res, next) => {
   const reports = await Report.find()
     .populate("reportedBy", "userName profileImage")
-    .populate("reportedItem");
+    .populate({
+      path: "reportedItem",
+      populate: {
+        path: "userId",
+        select: "userName profileImage",
+      },
+    });
+
 
   res.status(200).json({ success: true, results: reports });
 });
@@ -69,7 +76,13 @@ export const getReports = asyncHandler(async (req, res, next) => {
 export const getReportById = asyncHandler(async (req, res, next) => {
   const report = await Report.findById(req.params.id)
     .populate("reportedBy", "userName profileImage")
-    .populate("reportedItem");
+    .populate({
+      path: "reportedItem",
+      populate: {
+        path: "userId", // assuming the field in Post/Comment/Reply schema is called `user`
+        select: "userName profileImage",
+      },
+    });
 
   if (!report) {
     const error = new Error("Report not found");
@@ -79,6 +92,7 @@ export const getReportById = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ success: true, report });
 });
+
 
 // ✅ Update Report Status (Admin Only)
 export const updateReportStatus = asyncHandler(async (req, res, next) => {

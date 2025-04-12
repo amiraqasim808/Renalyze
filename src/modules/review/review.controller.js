@@ -76,6 +76,29 @@ export const getReviewById = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ success: true, review });
 });
+// Get My Review for a Specific Doctor
+export const getMyReviewForDoctor = asyncHandler(async (req, res, next) => {
+  const { doctorId } = req.params;
+  const userId = req.user._id; // assuming you're using auth middleware
+
+  const review = await Review.findOne({
+    doctor: doctorId,
+    user: userId,
+  }).populate("user", "userName profileImage");
+
+  if (!review) {
+    return res.status(404).json({
+      success: false,
+      message: "No review found for this doctor by you",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    review,
+  });
+});
+
 
 // Update Review
 export const updateReview = asyncHandler(async (req, res, next) => {
