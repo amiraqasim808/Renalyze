@@ -62,32 +62,43 @@ export const addDoctor = asyncHandler(async (req, res, next) => {
 });
 
 export const getDoctors = asyncHandler(async (req, res) => {
-  const {  address } = req.query; // Get optional filters
+  const { address } = req.query;
 
-  let filter = {}; // Initialize an empty filter object
+  let filter = {};
 
-
-  // Filter by address if provided (case-insensitive search)
   if (address) {
-    filter.address = { $regex: address, $options: "i" }; // Case-insensitive partial match
+    filter.address = { $regex: address, $options: "i" };
   }
 
   const doctors = await Doctor.find(filter);
 
-  res.status(200).json({ success: true, results: doctors });
+  const formattedDoctors = doctors.map((doc) => {
+    const doctorObj = doc.toObject();
+    doctorObj.avgRating = doctorObj.avgRating.toFixed(1); // <- changed
+    return doctorObj;
+  });
+
+
+  res.status(200).json({ success: true, results: formattedDoctors });
 });
+
 export const getTopRatedDoctors = asyncHandler(async (req, res) => {
-  const { limit = 10 } = req.query; // Allow limit customization, default to 10
+  const { limit = 10 } = req.query;
 
   const topDoctors = await Doctor.find()
-    .sort({ avgRating: -1 }) // Sort by highest rating
-    .limit(Number(limit)); // Limit results
+    .sort({ avgRating: -1 })
+    .limit(Number(limit));
 
-  res.status(200).json({ success: true, results: topDoctors });
+  const formattedDoctors = topDoctors.map((doc) => {
+    const doctorObj = doc.toObject();
+    doctorObj.avgRating = doctorObj.avgRating.toFixed(1); // <- changed
+    return doctorObj;
+  });
+
+
+  res.status(200).json({ success: true, results: formattedDoctors });
 });
 
-
-// ✅ Get Single Doctor by ID
 export const getDoctorById = asyncHandler(async (req, res, next) => {
   const doctor = await Doctor.findById(req.params.id);
 
@@ -97,8 +108,12 @@ export const getDoctorById = asyncHandler(async (req, res, next) => {
     return next(error);
   }
 
-  res.status(200).json({ success: true, doctor });
+  const doctorObj = doctor.toObject();
+  doctorObj.avgRating = doctorObj.avgRating.toFixed(1); // <- changed
+
+  res.status(200).json({ success: true, doctor: doctorObj });
 });
+
 
 export const updateDoctor = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
