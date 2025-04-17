@@ -46,7 +46,7 @@ export const getPosts = asyncHandler(async (req, res) => {
   const userId = req.user._id; // Logged-in user
 
   const posts = await Post.find()
-    .populate("userId", "userName profileImage") // Get user info
+    .populate("userId", "userName profileImage ") // Get user info
     .populate({
       path: "comments",
       select: "content userId createdAt likesCount repliesCount", // Select required fields
@@ -162,6 +162,21 @@ export const getUserProfile = asyncHandler(async (req, res, next) => {
 
   // Fetch posts created by the user
   const posts = await Post.find({ userId: id })
+    .populate("userId", "userName profileImage") // Post author info
+    .populate({
+      path: "comments",
+      select: "content userId createdAt likesCount repliesCount",
+      populate: [
+        { path: "userId", select: "userName profileImage" }, // Comment user
+        { path: "likesCount" },
+        { path: "repliesCount" },
+        {
+          path: "likes",
+          select: "userId",
+          populate: { path: "userId", select: "userName profileImage" },
+        },
+      ],
+    })
     .populate({
       path: "likes",
       select: "userId",
@@ -170,22 +185,32 @@ export const getUserProfile = asyncHandler(async (req, res, next) => {
     .populate("likesCount commentCount")
     .lean();
 
-  // Fetch likes by the viewer to mark isLiked
+  // Fetch viewer's likes to flag `isLiked`
   const viewerLikes = await Like.find({ userId: viewerId });
 
-  const postsWithLikeInfo = posts.map((post) => {
-    const isLiked = viewerLikes.some(
+  const postsWithLikes = posts.map((post) => {
+    const postIsLiked = viewerLikes.some(
       (like) => like.targetId.equals(post._id) && like.targetType === "Post"
     );
-    return { ...post, isLiked };
+
+    const commentsWithLikes = post.comments.map((comment) => {
+      const commentIsLiked = viewerLikes.some(
+        (like) =>
+          like.targetId.equals(comment._id) && like.targetType === "Comment"
+      );
+      return { ...comment, isLiked: commentIsLiked };
+    });
+
+    return { ...post, isLiked: postIsLiked, comments: commentsWithLikes };
   });
 
   res.status(200).json({
     success: true,
     user,
-    posts: postsWithLikeInfo,
+    posts: postsWithLikes,
   });
 });
+
 
 // **Update a post**
 export const updatePost = asyncHandler(async (req, res, next) => {

@@ -8,32 +8,79 @@ import fs from "fs";
 import PDFDocument from "pdfkit";
 import path from "path";
 import { fileURLToPath } from "url";
+import { Post } from "../../../DB/models/post.model.js";
+import { Like } from "../../../DB/models/like.model.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// get user data
+// Get user data and their posts with full details
 export const userData = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(
-    req.user._id,
-    "userName email profileImage "
-  ).populate({
-    path: "posts",
-    select: "content media tag likesCount commentCount createdAt", // Select relevant fields
-    populate: [{ path: "likesCount" }, { path: "commentCount" }],
-  });
+  const userId = req.user._id;
 
+  // Get basic user info
+  const user = await User.findById(userId).select("userName email profileImage");
   if (!user) {
     const error = new Error("User not found");
     error.cause = 404;
     return next(error);
   }
 
+  // Get posts by the user with full structure
+  const posts = await Post.find({ userId })
+    .populate("userId", "userName profileImage") // Post author
+    .populate({
+      path: "comments",
+      select: "content userId createdAt likesCount repliesCount",
+      populate: [
+        { path: "userId", select: "userName profileImage" },
+        { path: "likesCount" },
+        { path: "repliesCount" },
+        {
+          path: "likes",
+          select: "userId",
+          populate: { path: "userId", select: "userName profileImage" },
+        },
+      ],
+    })
+    .populate({
+      path: "likes",
+      select: "userId",
+      populate: { path: "userId", select: "userName profileImage" },
+    })
+    .populate("likesCount commentCount")
+    .lean();
+
+  // Get likes of the current user
+  const viewerLikes = await Like.find({ userId });
+
+  // Add isLiked info
+  const postsWithLikes = posts.map((post) => {
+    const postIsLiked = viewerLikes.some(
+      (like) => like.targetId.equals(post._id) && like.targetType === "Post"
+    );
+
+    const commentsWithLikes = post.comments.map((comment) => {
+      const commentIsLiked = viewerLikes.some(
+        (like) =>
+          like.targetId.equals(comment._id) && like.targetType === "Comment"
+      );
+      return { ...comment, isLiked: commentIsLiked };
+    });
+
+    return { ...post, isLiked: postIsLiked, comments: commentsWithLikes };
+  });
+
+  // Return user with detailed posts
   return res.json({
     success: true,
-    results: { user },
+    results: {
+      user,
+      posts: postsWithLikes,
+    },
   });
 });
+
 
 // Update user profile
 export const updateUserProfile = asyncHandler(async (req, res, next) => {
