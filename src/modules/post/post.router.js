@@ -19,8 +19,12 @@ router.post(
 // ✅ Get All Posts
 router.get("/all", isAuthenticated, postController.getPosts);
 
+// ✅ Get user profile by ID
+router.get("/profile/:id", isAuthenticated, postController.getUserProfile);
+
 // ✅ Get Post by ID
 router.get("/:id", isAuthenticated, postController.getPostById);
+
 
 // ✅ Update Post
 router.patch(

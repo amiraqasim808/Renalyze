@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 export const userData = asyncHandler(async (req, res, next) => {
   const user = await User.findById(
     req.user._id,
-    "userName email profileImage -_id"
+    "userName email profileImage "
   ).populate({
     path: "posts",
     select: "content media tag likesCount commentCount createdAt", // Select relevant fields

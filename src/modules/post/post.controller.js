@@ -149,6 +149,43 @@ export const getPostById = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ success: true, post });
 });
+// **Get user profile and their posts**
+export const getUserProfile = asyncHandler(async (req, res, next) => {
+  const { id } = req.params; // userId to fetch (can be self or others)
+  const viewerId = req.user._id; // logged-in user
+
+  // Fetch user basic info
+  const user = await User.findById(id).select("userName profileImage bio");
+  if (!user) {
+    return next(new Error("User not found"));
+  }
+
+  // Fetch posts created by the user
+  const posts = await Post.find({ userId: id })
+    .populate({
+      path: "likes",
+      select: "userId",
+      populate: { path: "userId", select: "userName profileImage" },
+    })
+    .populate("likesCount commentCount")
+    .lean();
+
+  // Fetch likes by the viewer to mark isLiked
+  const viewerLikes = await Like.find({ userId: viewerId });
+
+  const postsWithLikeInfo = posts.map((post) => {
+    const isLiked = viewerLikes.some(
+      (like) => like.targetId.equals(post._id) && like.targetType === "Post"
+    );
+    return { ...post, isLiked };
+  });
+
+  res.status(200).json({
+    success: true,
+    user,
+    posts: postsWithLikeInfo,
+  });
+});
 
 // **Update a post**
 export const updatePost = asyncHandler(async (req, res, next) => {
