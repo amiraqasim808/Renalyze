@@ -361,11 +361,7 @@ export const getPastKidneyScanDiagnoses = asyncHandler(
       createdAt: -1,
     });
 
-    if (!diagnoses || diagnoses.length === 0) {
-      const error = new Error("No past diagnoses found");
-      error.cause = 404;
-      return next(error);
-    }
+   
 
     return res.json({
       success: true,
