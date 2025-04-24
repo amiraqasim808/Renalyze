@@ -58,7 +58,7 @@ export const getReviews = asyncHandler(async (req, res) => {
   const { doctorId } = req.query;
   const filter = doctorId ? { doctor: doctorId } : {};
   const reviews = await Review.find(filter)
-    .populate("user", "userName profileImage")
+    .populate("user", "userName profileImage").populate("doctor")
     .sort({ createdAt: -1 });
 
   res.status(200).json({ success: true, results: reviews });
@@ -66,7 +66,7 @@ export const getReviews = asyncHandler(async (req, res) => {
 
 // Get Review by ID
 export const getReviewById = asyncHandler(async (req, res, next) => {
-  const review = await Review.findById(req.params.id).populate("user", "name");
+  const review = await Review.findById(req.params.id).populate("user","name profileImage").populate("doctor");
 
   if (!review) {
     const error = new Error("Review not found");
@@ -84,7 +84,9 @@ export const getMyReviewForDoctor = asyncHandler(async (req, res, next) => {
   const review = await Review.findOne({
     doctor: doctorId,
     user: userId,
-  }).populate("user", "userName profileImage");
+  }).populate("user", "userName profileImage").populate(
+    "doctor"
+  );
 
 
   res.status(200).json({
@@ -150,8 +152,7 @@ await updateDoctorAvgRating(review.doctor);
 // Get User's Own Reviews
 export const getUserReviews = asyncHandler(async (req, res) => {
   const reviews = await Review.find({ user: req.user._id }).populate(
-    "doctor",
-    "name profileImage"
+    "doctor"
   );
 
   res.status(200).json({ success: true, results: reviews });

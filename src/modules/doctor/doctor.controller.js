@@ -1,4 +1,5 @@
 import { Doctor } from "../../../DB/models/doctor.model.js";
+import { Review } from "../../../DB/models/review.model.js";
 import { User } from "../../../DB/models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import cloudinary from "../../utils/cloud.js";
@@ -186,8 +187,9 @@ export const deleteDoctor = asyncHandler(async (req, res, next) => {
     return next(error);
   }
 
-
   await Doctor.findByIdAndDelete(id);
+ 
+  await Review.deleteMany({ doctor: id });
 
   res.status(200).json({ success: true, message: "Doctor deleted" });
 });
