@@ -86,12 +86,6 @@ export const getMyReviewForDoctor = asyncHandler(async (req, res, next) => {
     user: userId,
   }).populate("user", "userName profileImage");
 
-  if (!review) {
-    return res.status(404).json({
-      success: false,
-      message: "No review found for this doctor by you",
-    });
-  }
 
   res.status(200).json({
     success: true,
