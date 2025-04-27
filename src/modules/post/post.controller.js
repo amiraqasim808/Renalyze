@@ -46,7 +46,7 @@ export const getPosts = asyncHandler(async (req, res) => {
   const userId = req.user._id; // Logged-in user
 
   const posts = await Post.find()
-    .populate("userId", "userName profileImage ") // Get user info
+    .populate("userId", "userName profileImage") // Get user info
     .populate({
       path: "comments",
       select: "content userId createdAt likesCount repliesCount", // Select required fields
@@ -73,11 +73,13 @@ export const getPosts = asyncHandler(async (req, res) => {
   // Fetch likes for the logged-in user
   const userLikes = await Like.find({ userId });
 
-  // Add `isLiked` info for posts and comments
+  // Add `isLiked` and `myOwnPost` info for posts and comments
   const postsWithLikes = posts.map((post) => {
     const postIsLiked = userLikes.some(
       (like) => like.targetId.equals(post._id) && like.targetType === "Post"
     );
+
+    const postIsMyOwnPost = post.userId._id.equals(userId); // Check if the post belongs to the logged-in user
 
     const commentsWithLikes = post.comments.map((comment) => {
       const commentIsLiked = userLikes.some(
@@ -87,7 +89,12 @@ export const getPosts = asyncHandler(async (req, res) => {
       return { ...comment, isLiked: commentIsLiked };
     });
 
-    return { ...post, isLiked: postIsLiked, comments: commentsWithLikes };
+    return {
+      ...post,
+      isLiked: postIsLiked,
+      myOwnPost: postIsMyOwnPost,
+      comments: commentsWithLikes,
+    };
   });
 
   res.status(200).json({ success: true, results: postsWithLikes });

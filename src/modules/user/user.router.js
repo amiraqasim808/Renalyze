@@ -9,7 +9,7 @@ import { fileUpload, filterObject } from "../../utils/multer.js";
 const router = Router();
 
 // get user data
-router.get("/", isAuthenticated, isAuthorized("user"), userController.userData);
+router.get("/", isAuthenticated, userController.userData);
 // update user's profile
 router.post(
   "/updateProfile",
