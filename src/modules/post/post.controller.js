@@ -79,14 +79,21 @@ export const getPosts = asyncHandler(async (req, res) => {
       (like) => like.targetId.equals(post._id) && like.targetType === "Post"
     );
 
-    const postIsMyOwnPost = post.userId._id.equals(userId); // Check if the post belongs to the logged-in user
+    const postIsMyOwnPost = post.userId._id.equals(userId);
 
     const commentsWithLikes = post.comments.map((comment) => {
       const commentIsLiked = userLikes.some(
         (like) =>
           like.targetId.equals(comment._id) && like.targetType === "Comment"
       );
-      return { ...comment, isLiked: commentIsLiked };
+
+      const commentIsMyOwnComment = comment.userId._id.equals(userId);
+
+      return {
+        ...comment,
+        isLiked: commentIsLiked,
+        myOwnComment: commentIsMyOwnComment,
+      };
     });
 
     return {
@@ -96,6 +103,7 @@ export const getPosts = asyncHandler(async (req, res) => {
       comments: commentsWithLikes,
     };
   });
+
 
   res.status(200).json({ success: true, results: postsWithLikes });
 });
@@ -341,20 +349,24 @@ export const getRepliesByCommentId = asyncHandler(async (req, res, next) => {
   // Fetch likes for the logged-in user
   const userLikes = await Like.find({ userId });
 
-  // Add `isLiked` info for each reply
+  // Add `isLiked` and `myOwnReply` info for each reply
   const repliesWithLikes = replies.map((reply) => {
     const replyIsLiked = userLikes.some(
       (like) => like.targetId.equals(reply._id) && like.targetType === "Reply"
     );
 
+    const replyIsMyOwnReply = reply.userId._id.equals(userId);
+
     return {
       ...reply,
       isLiked: replyIsLiked,
+      myOwnReply: replyIsMyOwnReply,
     };
   });
 
   res.status(200).json({ success: true, replies: repliesWithLikes });
 });
+
 
 export const createComment = asyncHandler(async (req, res, next) => {
   const { postId } = req.params;
