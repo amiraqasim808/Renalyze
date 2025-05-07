@@ -114,7 +114,8 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
   }
 
   // Update the user document
-  user.userName = userName;
+  if(userName){user.userName = userName;}
+  
   if (updatedProfileImage) {
     user.profileImage = updatedProfileImage;
   }

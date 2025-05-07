@@ -14,7 +14,6 @@ router.get("/", isAuthenticated, userController.userData);
 router.post(
   "/updateProfile",
   isAuthenticated,
-  isAuthorized("user"),
   fileUpload(filterObject.image).single("img"),
   userController.updateUserProfile
 );

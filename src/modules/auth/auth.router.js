@@ -63,22 +63,6 @@ router.delete(
 );
 
 
-// // Get active users
-// router.get(
-//   "/active_users",
-//   isAuthenticated,
-//   isAuthorized("admin"),
-//   authController.getActiveUsers
-// );
-
-// // Get deleted users
-// router.get(
-//   "/deleted_users",
-//   isAuthenticated,
-//   isAuthorized("admin"),
-//   authController.getDeletedUsers
-// );
-
 
 
 export default router;
