@@ -1,59 +1,62 @@
-﻿🩺 Renalyze – AI-Powered Kidney Diagnosis Platform
-Renalyze is an AI-driven health platform that assists in the early detection and analysis of kidney conditions from uploaded scan images. It includes a mobile app for users and a full-featured web dashboard for administrators.
+# 🩺 Renalyze – AI-Powered Kidney Diagnosis Platform
 
-🚀 Features
-📱 Mobile App (Patient Side)
-AI-Based Kidney Diagnosis: Upload kidney scans to get AI-generated diagnostic results (Stone, Tumor, Cyst, or Normal).
+**Renalyze** is a full-stack AI healthcare platform developed as a graduation project. It empowers users to diagnose kidney conditions through scan analysis, access medical content, and engage in a supportive health community — all through a mobile app. The admin dashboard allows for powerful content and user management.
 
-PDF Reports: Download and share professional diagnosis reports in PDF format.
+---
 
-History Tracking: Access past diagnosis results with timestamps.
+## ✨ Features Overview
 
-Health Articles: Browse articles about kidney health curated by admins.
+### 📱 Mobile Application
 
-Doctor Directory: View top kidney specialists with maps, contact info, and reviews.
+- 🧠 **AI Kidney Diagnosis** – Upload kidney scans to detect:
+  - Kidney **Stones**
+  - **Tumors**
+  - **Cysts**
+  - or a **Healthy Kidney**
+- 📄 **Downloadable PDF Reports** – Save and share diagnosis results.
+- 🕘 **Medical History** – View and track past scan results.
+- 🧮 **eGFR Calculator** – Estimate kidney function using age, gender & creatinine level.
+- 📰 **Health Articles** – Read admin-curated content on kidney health.
+- 🧑‍⚕️ **Doctor Directory** – Find top specialists with contact info, location & reviews.
+- 💬 **Community Forum** – Share experiences, ask questions & support others.
 
-Community Forum: Post, comment, reply, and engage in discussions around kidney health.
+### 🧑‍💼 Admin Dashboard
 
-🧑‍💼 Admin Dashboard
-Authentication: Secure admin login with JWT.
+- 🔐 **Secure Authentication** – JWT-based login for administrators.
+- 📊 **Analytics Dashboard** – View stats: user count, articles, doctors, and posts.
+- 🧑‍⚖️ **User Management** – Block, warn, or monitor users flagged via reports.
+- 📰 **Content Management** – Create, edit, or delete health articles.
+- 🧑‍⚕️ **Doctor Management** – Manage doctor listings and details.
+- 📧 **Mass Emailing** – Send announcements to all users.
 
-Analytics Overview: Dashboard with key metrics (users, posts, doctors, articles).
+---
 
-User Management: View, block, or send warnings to users (especially in response to community reports).
+## 🛠 Tech Stack
 
-Doctor Management: Add, update, delete doctor profiles.
+| Layer        | Tools / Libraries                             |
+|--------------|-----------------------------------------------|
+| **Frontend** | *(Not included here – built with Flutter/React Native)* |
+| **Backend**  | Node.js, Express.js, MongoDB                  |
+| **Auth**     | JWT, bcryptjs                                 |
+| **Image Upload** | Multer, Cloudinary                      |
+| **Emailing** | Nodemailer                                    |
+| **PDF**      | PDFKit                                        |
+| **Validation** | Joi                                        |
+| **Payment Integration** | Stripe                            |
+| **Scheduling** | node-cron                                  |
 
-Content Management: Create and manage health articles.
+---
 
-Mass Emailing: Send announcements or health reminders to all registered users.
+## ⚙️ Getting Started
 
-🛠 Tech Stack
-Backend: Node.js, Express.js
+### 1. Clone & Install
 
-Database: MongoDB
-
-Authentication: JWT + bcrypt
-
-File Handling: Multer + Cloudinary
-
-Scheduling: node-cron
-
-Emailing: Nodemailer
-
-PDF Generation: PDFKit
-
-Payment Support: Stripe
-
-Validation: Joi
-
-Admin Panel: Web Dashboard
-
-Mobile App: Built with Flutter/React Native (not in this repo)
-
-🌱 Setup Instructions
-🔐 Environment Configuration
-Create a .env file in the root directory with the following:
+```bash
+git clone https://github.com/your-username/renalyze.git
+cd renalyze
+npm install
+2. Setup Environment Variables
+Create a .env file in the root with:
 
 env
 Copy
@@ -63,26 +66,16 @@ MONGODB_URI=your_mongodb_uri
 JWT_SECRET=your_jwt_secret
 
 CLOUDINARY_CLOUD_NAME=your_cloudinary_name
-CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_secret
 
 NODE_ENV=development
-📦 Install Dependencies
+3. Run the App
 bash
 Copy
 Edit
-npm install
-🚀 Run the App
-bash
-Copy
-Edit
-# For development
+# Development
 npm run dev
 
-# For production
+# Production
 npm start
-🎓 About This Project
-This project was built as part of a university graduation capstone. It aims to combine AI technology with modern full-stack development to deliver a meaningful solution in healthcare—especially for early detection and awareness of kidney disease.
-
-
-
